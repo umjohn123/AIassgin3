@@ -1,0 +1,690 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>POLCA-Net — CISC3024 AI Assignment #3</title>
+<meta name="description" content="POLCA-Net: a non-linear, orthogonality-constrained and variance-ordered generalisation of PCA and LDA. CISC3024 Pattern Recognition, AI Assignment #3.">
+<style>  :root {
+    --bg: #ffffff;
+    --bg-soft: #f6f7f9;
+    --bg-code: #f2f4f7;
+    --fg: #16191d;
+    --fg-soft: #4a5158;
+    --fg-faint: #6b7278;
+    --line: #dfe3e8;
+    --line-strong: #c6ccd3;
+    --accent: #1f4e79;
+    --accent-soft: #eaf0f7;
+    --kw: #a626a4;
+    --fn: #1f6f43;
+    --str: #b1560f;
+    --num: #0b6bcb;
+    --com: #6b7278;
+    --maxw: 1080px;
+  }
+  @media (prefers-color-scheme: dark) {
+    :root {
+      --bg: #14171a;
+      --bg-soft: #1b1f24;
+      --bg-code: #1e2329;
+      --fg: #e6e9ec;
+      --fg-soft: #b3bac1;
+      --fg-faint: #8b939b;
+      --line: #2b3138;
+      --line-strong: #3a424a;
+      --accent: #79b8f3;
+      --accent-soft: #1b2a38;
+      --kw: #c678dd;
+      --fn: #98c379;
+      --str: #e5c07b;
+      --num: #61afef;
+      --com: #7f8792;
+    }
+  }
+  * { box-sizing: border-box; }
+  html { scroll-behavior: smooth; }
+  body {
+    margin: 0;
+    background: var(--bg);
+    color: var(--fg);
+    font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, "Helvetica Neue",
+                 Arial, "Noto Sans", "PingFang SC", "Microsoft YaHei", sans-serif;
+    font-size: 16px;
+    line-height: 1.65;
+    -webkit-font-smoothing: antialiased;
+  }
+  a { color: var(--accent); text-decoration: none; }
+  a:hover, a:focus { text-decoration: underline; }
+  code, pre, .mono {
+    font-family: ui-monospace, SFMono-Regular, "SF Mono", Menlo, Consolas,
+                 "Liberation Mono", monospace;
+  }
+  header.nav {
+    position: sticky; top: 0; z-index: 10;
+    background: var(--bg);
+    border-bottom: 1px solid var(--line);
+  }
+  .nav-inner {
+    max-width: var(--maxw); margin: 0 auto; padding: 0.75rem 1.25rem;
+    display: flex; flex-wrap: wrap; gap: 0.4rem 1.1rem; align-items: baseline;
+  }
+  .brand { font-weight: 700; letter-spacing: -0.01em; margin-right: auto; }
+  .brand span { color: var(--fg-faint); font-weight: 400; font-size: 0.85rem; }
+  nav.links a { color: var(--fg-soft); font-size: 0.9rem; }
+  nav.links a:hover { color: var(--accent); text-decoration: none; }
+  main { max-width: var(--maxw); margin: 0 auto; padding: 0 1.25rem 4rem; }
+  section { padding: 2.75rem 0 0; scroll-margin-top: 4rem; }
+  h1, h2, h3 { line-height: 1.25; letter-spacing: -0.015em; }
+  h1 { font-size: 2.1rem; margin: 0 0 0.5rem; }
+  h2 {
+    font-size: 1.4rem; margin: 0 0 1rem;
+    padding-bottom: 0.4rem; border-bottom: 1px solid var(--line);
+  }
+  h3 { font-size: 1.05rem; margin: 1.6rem 0 0.5rem; }
+  p { margin: 0 0 1rem; }
+  .lead { font-size: 1.08rem; color: var(--fg-soft); }
+  .muted { color: var(--fg-faint); font-size: 0.9rem; }
+  .hero { padding: 3.25rem 0 0; }
+  .hero .kicker {
+    text-transform: uppercase; letter-spacing: 0.12em; font-size: 0.75rem;
+    color: var(--fg-faint); margin-bottom: 0.75rem;
+  }
+  .hero .meta {
+    display: flex; flex-wrap: wrap; gap: 0.5rem 1.25rem;
+    margin-top: 1.25rem; color: var(--fg-soft); font-size: 0.92rem;
+  }
+  .hero .meta strong { color: var(--fg); font-weight: 600; }
+  .badges { display: flex; flex-wrap: wrap; gap: 0.5rem; margin-top: 1.25rem; }
+  .badge {
+    border: 1px solid var(--line-strong); border-radius: 999px;
+    padding: 0.2rem 0.75rem; font-size: 0.82rem; color: var(--fg-soft);
+    background: var(--bg-soft);
+  }
+  .grid { display: grid; gap: 1.25rem; grid-template-columns: repeat(2, minmax(0, 1fr)); }
+  .card {
+    border: 1px solid var(--line); border-radius: 10px;
+    padding: 1rem 1.15rem; background: var(--bg-soft);
+  }
+  .card h3 { margin-top: 0; }
+  .card p:last-child { margin-bottom: 0; }
+  .formula {
+    border: 1px solid var(--line); border-left: 3px solid var(--accent);
+    border-radius: 8px; padding: 1rem 1.15rem; background: var(--bg-soft);
+    overflow-x: auto; margin: 0 0 1.25rem;
+  }
+  .formula .eq { display: block; font-size: 1.02rem; margin-bottom: 0.4rem; }
+  .formula .eq:last-child { margin-bottom: 0; }
+  .formula .lhs { color: var(--accent); font-weight: 700; }
+  table {
+    width: 100%; border-collapse: collapse; margin: 0 0 1.25rem;
+    font-size: 0.9rem;
+  }
+  caption { text-align: left; color: var(--fg-faint); font-size: 0.85rem; padding-bottom: 0.5rem; }
+  th, td { border: 1px solid var(--line); padding: 0.45rem 0.6rem; text-align: left; vertical-align: top; }
+  th { background: var(--bg-soft); font-weight: 600; }
+  tbody tr:nth-child(even) { background: var(--bg-soft); }
+  td.num { font-variant-numeric: tabular-nums; }
+  pre {
+    background: var(--bg-code); border: 1px solid var(--line); border-radius: 10px;
+    padding: 0.9rem 1rem; overflow-x: auto; font-size: 0.83rem; line-height: 1.55;
+    margin: 0 0 1.25rem;
+  }
+  pre code { color: var(--fg); }
+  .kw { color: var(--kw); }
+  .fn { color: var(--fn); }
+  .str { color: var(--str); }
+  .num { color: var(--num); }
+  .com { color: var(--com); font-style: italic; }
+  .dec { color: var(--accent); }
+  figure { margin: 0 0 1.25rem; }
+  figure img {
+    width: 100%; height: auto; display: block;
+    border: 1px solid var(--line); border-radius: 10px; background: var(--bg-soft);
+  }
+  figcaption { color: var(--fg-faint); font-size: 0.85rem; margin-top: 0.5rem; }
+  .filelist { list-style: none; padding: 0; margin: 0 0 1.25rem; }
+  .filelist li {
+    border: 1px solid var(--line); border-radius: 8px; padding: 0.5rem 0.85rem;
+    margin-bottom: 0.5rem; background: var(--bg-soft); font-size: 0.9rem;
+  }
+  .filelist li .path { font-weight: 600; }
+  .filelist li .desc { color: var(--fg-faint); }
+  .note {
+    border: 1px solid var(--line); border-radius: 8px; padding: 0.85rem 1rem;
+    background: var(--accent-soft); font-size: 0.9rem; color: var(--fg-soft);
+  }
+  .note strong { color: var(--fg); }
+  footer.site {
+    border-top: 1px solid var(--line); margin-top: 3.5rem; padding: 1.75rem 0 2.5rem;
+    color: var(--fg-faint); font-size: 0.85rem;
+  }
+  footer.site .inner { max-width: var(--maxw); margin: 0 auto; padding: 0 1.25rem; }
+  @media (max-width: 760px) {
+    .grid { grid-template-columns: 1fr; }
+    h1 { font-size: 1.7rem; }
+    .nav-inner { font-size: 0.9rem; }
+  }
+  @media print {
+    header.nav { position: static; }
+  }</style>
+</head>
+<body>
+
+<header class="nav">
+  <div class="nav-inner">
+    <div class="brand">POLCA-Net <span>/ CISC3024</span></div>
+    <nav class="links">
+      <a href="#algorithm">Algorithm</a>
+      <a href="#structure">Structure</a>
+      <a href="#code">Code</a>
+      <a href="#experiments">Experiments</a>
+      <a href="#results">Results</a>
+      <a href="#report">Report</a>
+      <a href="#ai">AI workflow</a>
+    </nav>
+  </div>
+</header>
+
+<main>
+
+  <!-- ================= HERO ================= -->
+  <section class="hero" id="top">
+    <div class="kicker">AI Assignment #3 &middot; Coursework Project Page</div>
+    <h1>POLCA-Net: Non-linear PCA/LDA with an Orthogonal, Variance-Ordered Latent Space</h1>
+    <p class="lead">
+      A faithful, from-scratch reimplementation of <strong>Principal Orthogonal Latent
+      Components Analysis</strong> (POLCA Net, arXiv:2410.07289, 2024) &mdash; an
+      autoencoder that explicitly mimics and extends the capabilities of PCA and LDA to
+      non-linear domains by penalising latent orthogonality and by ordering the latent
+      components by variance.
+    </p>
+    <div class="badges">
+      <span class="badge">arXiv:2410.07289</span>
+      <span class="badge">Python 3.12</span>
+      <span class="badge">PyTorch 2.x</span>
+      <span class="badge">scikit-learn</span>
+      <span class="badge">No external CDN &middot; renders offline</span>
+    </div>
+    <div class="meta">
+      <span><strong>Course</strong> CISC3024 Pattern Recognition</span>
+      <span><strong>Assignment</strong> AI Assignment #3</span>
+      <span><strong>Date</strong> November 2026</span>
+      <span><strong>Author</strong> &lt;Student Name / Matric No.&gt;</span>
+    </div>
+  </section>
+
+  <!-- ================= ALGORITHM ================= -->
+  <section id="algorithm">
+    <h2>The Algorithm</h2>
+    <p>
+      Classical PCA finds an orthogonal set of latent directions ordered by explained
+      variance; LDA finds a supervised, discriminant-aligned set. POLCA Net keeps both
+      properties but lets the projection be non-linear, by training an autoencoder with
+      a composite objective that (i) reconstructs the input, (ii) decorrelates the latent
+      components, (iii) orders them by decreasing variance, and (iv) optionally keeps
+      the classes linearly separable.
+    </p>
+
+    <div class="formula" role="group" aria-label="Composite loss formula">
+      <span class="eq"><span class="lhs">L_polca</span> = L_rec + L_class + alpha &middot; L_ort + beta &middot; L_com + gamma &middot; L_var</span>
+      <span class="eq">L_ort = (2 / (n(n&minus;1))) &middot; sum<sub>i&lt;j</sub> S<sub>ij</sub><sup>2</sup>,&nbsp;&nbsp;S = Z&#770;<sup>T</sup> Z&#770;,&nbsp;&nbsp;Z&#770; = row-wise L2-normalised latent codes</span>
+      <span class="eq">L_com = sum<sub>i</sub> i<sup>1+eps</sup> &middot; E[(z<sub>i</sub> &minus; E z<sub>i</sub>)<sup>2</sup>] / (n &middot; L_var),&nbsp;&nbsp;eps = 0.25</span>
+      <span class="eq">L_var = sum<sub>i</sub> E[(z<sub>i</sub> &minus; E z<sub>i</sub>)<sup>2</sup>]</span>
+      <span class="eq">alpha = 1e&minus;2,&nbsp;&nbsp;beta = 1e&minus;2,&nbsp;&nbsp;gamma = 1e&minus;7,&nbsp;&nbsp;batch = 64,&nbsp;&nbsp;20 000 gradient updates,&nbsp;&nbsp;seed = 5</span>
+    </div>
+
+    <table>
+      <caption>The five components of the composite objective.</caption>
+      <thead>
+        <tr><th>Term</th><th>What it measures</th><th>PCA / LDA property it recovers</th></tr>
+      </thead>
+      <tbody>
+        <tr>
+          <td><code>L_rec</code></td>
+          <td>Mean squared error between the input and its reconstruction.</td>
+          <td>Fidelity / the "least squares" side of PCA.</td>
+        </tr>
+        <tr>
+          <td><code>L_class</code></td>
+          <td>Cross-entropy of a linear head on the latent code (supervised mode only).</td>
+          <td>The discriminant, class-aligned directions of LDA.</td>
+        </tr>
+        <tr>
+          <td><code>L_ort</code></td>
+          <td>Squared off-diagonal energy of the Gram matrix of the L2-normalised latent codes.</td>
+          <td>Orthogonality / decorrelation of the principal components.</td>
+        </tr>
+        <tr>
+          <td><code>L_com</code></td>
+          <td>Variance-weighted index term; small when variance decreases along the latent index.</td>
+          <td>Variance <em>ordering</em> of the components (the "principal" in principal component).</td>
+        </tr>
+        <tr>
+          <td><code>L_var</code></td>
+          <td>Total per-component latent variance; normaliser and stabiliser.</td>
+          <td>Keeps the latent space well scaled; prevents <code>L_com</code> from degenerating.</td>
+        </tr>
+      </tbody>
+    </table>
+
+    <div class="note">
+      <strong>Conventions we had to choose.</strong> The paper does not spell out two
+      details. We use the <em>population</em> variance (divide by <em>N</em>) because the
+      paper's <code>E[&middot;]</code> denotes an expectation over the data distribution,
+      and we count each unordered off-diagonal pair of <code>S</code> exactly once
+      (<code>sum_{i&lt;j}</code>). Both choices are documented in the source and stated in
+      the report.
+    </div>
+  </section>
+
+  <!-- ================= STRUCTURE ================= -->
+  <section id="structure">
+    <h2>Repository Structure</h2>
+<pre><code>AIassgin3/
+├── src/
+│   ├── polca/
+│   │   ├── <span class="kw">__init__.py</span>
+│   │   ├── <span class="fn">losses.py</span>          <span class="com"># L_rec, L_ort, L_com, L_var, L_class, polca_loss</span>
+│   │   ├── <span class="fn">model.py</span>           <span class="com"># POLCANet + Autoencoder baseline</span>
+│   │   ├── <span class="fn">data.py</span>            <span class="com"># digits / MNIST / FashionMNIST loaders</span>
+│   │   └── <span class="fn">utils.py</span>           <span class="com"># seeding, device selection, logging</span>
+│   ├── <span class="fn">baselines.py</span>            <span class="com"># PCAEncoder, LDAEncoder, plain autoencoder</span>
+│   ├── <span class="fn">metrics.py</span>              <span class="com"># NRMSE, PSNR, SSIM, orthogonality, variance ordering</span>
+│   ├── <span class="fn">train.py</span>                <span class="com"># POLCA training loop + ablation switches</span>
+│   ├── <span class="fn">evaluate.py</span>             <span class="com"># 4 linear classifiers, Accuracy / F1</span>
+│   └── <span class="fn">make_figures.py</span>         <span class="com"># all plots</span>
+├── tests/
+│   └── <span class="fn">smoke_test.py</span>           <span class="com"># shape, orthogonality and ordering assertions</span>
+├── results/
+│   ├── <span class="fn">metrics.csv</span>              <span class="com"># tidy per (dataset, method) metrics</span>
+│   ├── <span class="fn">summary.json</span>            <span class="com"># aggregate statistics</span>
+│   └── figures/                  <span class="com"># *.png rendered by make_figures.py</span>
+├── report/
+│   ├── <span class="fn">build_report.py</span>         <span class="com"># python-docx generator for the 6-section report</span>
+│   ├── AI_Assignment3_Report.docx
+│   └── AI_Assignment3_Report.pdf
+├── docs/
+│   ├── <span class="fn">index.html</span>              <span class="com"># this page (GitHub Pages)</span>
+│   └── README.md
+├── <span class="fn">AI_PROMPTS.md</span>                <span class="com"># full prompt log for the whole assignment</span>
+├── <span class="fn">README.md</span>
+├── <span class="fn">requirements.txt</span>
+└── <span class="fn">.gitignore</span></code></pre>
+  </section>
+
+  <!-- ================= CODE ================= -->
+  <section id="code">
+    <h2>Source Code Showcase</h2>
+    <p class="muted">
+      The two files that carry the paper are shown below. They are read verbatim from
+      <code>src/polca/losses.py</code> and <code>src/polca/model.py</code> in this
+      repository.
+    </p>
+
+    <h3>src/polca/losses.py &mdash; the objective</h3>
+<pre><code><span class="com">"""Loss functions of POLCA Net (arXiv:2410.07289)."""</span>
+ALPHA: float = 1e-2   <span class="com"># weight of the orthogonality term</span>
+BETA: float = 1e-2    <span class="com"># weight of the center-of-mass term</span>
+GAMMA: float = 1e-7   <span class="com"># weight of the variance regulariser</span>
+EPS_COM: float = 0.25 <span class="com"># exponent eps used by the center-of-mass term</span>
+_EPS: float = 1e-12
+<span class="kw">def</span> <span class="fn">_normalized_latents</span>(latent):
+    <span class="com">"""Return the L2-normalised latent codes z~ = z / ||z||_2."""</span>
+    <span class="kw">if</span> _is_torch(latent):
+        norms = latent.norm(p=2, dim=<span class="num">1</span>, keepdim=<span class="kw">True</span>)
+        <span class="kw">return</span> latent / norms.clamp_min(_EPS)
+    latent = np.asarray(latent, dtype=np.float32)
+    norms = np.linalg.norm(latent, axis=<span class="num">1</span>, keepdims=<span class="kw">True</span>)
+    <span class="kw">return</span> latent / np.maximum(norms, _EPS)
+<span class="kw">def</span> <span class="fn">gram_matrix</span>(latent):
+    <span class="com">"""S = Z~^T Z~ ; a decorrelated latent space gives S = I."""</span>
+    z = _normalized_latents(latent)
+    <span class="kw">if</span> _is_torch(z):
+        <span class="kw">return</span> z.transpose(<span class="num">0</span>, <span class="num">1</span>) @ z
+    <span class="kw">return</span> z.T @ z
+<span class="kw">def</span> <span class="fn">orthogonality_loss</span>(latent):
+    <span class="com">"""
+    L_ort = 2 / (n (n - 1)) * sum_{1 &lt;= i &lt; j &lt;= n} S_ij^2
+    Only the strict upper triangle is summed (the matrix is symmetric, so the
+    lower triangle must not be counted twice); the factor 2/(n(n-1)) then
+    converts the sum over pairs into the mean squared off-diagonal entry.
+    """</span>
+    s = gram_matrix(latent)
+    n = s.shape[<span class="num">-1</span>]
+    <span class="kw">if</span> n &lt; <span class="num">2</span>:
+        <span class="kw">if</span> _is_torch(s):
+            <span class="kw">return</span> s.sum() * <span class="num">0.0</span>
+        <span class="kw">return</span> np.float32(<span class="num">0.0</span>)
+    <span class="kw">if</span> _is_torch(s):
+        off_diagonal = torch.triu(s, diagonal=<span class="num">1</span>)
+        sum_sq = (off_diagonal ** <span class="num">2</span>).sum()
+        <span class="kw">return</span> <span class="num">2.0</span> * sum_sq / (n * (n - <span class="num">1</span>))
+    off_diagonal = np.triu(s, k=<span class="num">1</span>)
+    sum_sq = np.sum(off_diagonal ** <span class="num">2</span>)
+    <span class="kw">return</span> np.float32(<span class="num">2.0</span> * sum_sq / (n * (n - <span class="num">1</span>)))
+<span class="kw">def</span> <span class="fn">latent_variances</span>(latent, unbiased=<span class="kw">False</span>):
+    <span class="com">"""Var_i = E[(z_i - E[z_i])^2] over the batch (population estimator)."""</span>
+    <span class="kw">if</span> _is_torch(latent):
+        <span class="kw">return</span> latent.var(dim=<span class="num">0</span>, unbiased=unbiased)
+    arr = np.asarray(latent, dtype=np.float32)
+    ddof = <span class="num">1</span> <span class="kw">if</span> unbiased <span class="kw">and</span> arr.shape[<span class="num">0</span>] &gt; <span class="num">1</span> <span class="kw">else</span> <span class="num">0</span>
+    <span class="kw">return</span> np.var(arr, axis=<span class="num">0</span>, ddof=ddof).astype(np.float32)
+<span class="kw">def</span> <span class="fn">variance_loss</span>(latent, unbiased=<span class="kw">False</span>):
+    <span class="com">"""L_var = sum_i E[(z_i - E[z_i])^2]."""</span>
+    variances = latent_variances(latent, unbiased=unbiased)
+    <span class="kw">if</span> _is_torch(variances):
+        <span class="kw">return</span> variances.sum()
+    <span class="kw">return</span> np.float32(np.sum(variances))
+<span class="kw">def</span> <span class="fn">center_of_mass_loss</span>(latent, eps=EPS_COM, unbiased=<span class="kw">False</span>):
+    <span class="com">"""
+    L_com = sum_{i=0}^{n-1} i^(1+eps) E[(z_i - E[z_i])^2] / (n * L_var)
+    The per-dimension variances are L1-normalised through the total variance
+    L_var and additionally scaled by 1/n.  Because the weights i^(1+eps) grow
+    with the latent index, the term is small when the variance *decreases*
+    along the latent dimensions (the PCA-like ordering) and large otherwise.
+    """</span>
+    variances = latent_variances(latent, unbiased=unbiased)
+    n = variances.shape[<span class="num">-1</span>]
+    <span class="kw">if</span> _is_torch(variances):
+        index = torch.arange(n, device=variances.device, dtype=variances.dtype)
+        weights = index.pow(<span class="num">1.0</span> + eps)
+        total_var = variances.sum()
+        numerator = (weights * variances).sum()
+        <span class="kw">return</span> numerator / (n * total_var.clamp_min(_EPS))
+    variances = np.asarray(variances, dtype=np.float32)
+    weights = np.arange(n, dtype=np.float32) ** (<span class="num">1.0</span> + eps)
+    total_var = <span class="kw">float</span>(np.sum(variances))
+    numerator = <span class="kw">float</span>(np.sum(weights * variances))
+    <span class="kw">return</span> np.float32(numerator / (n * max(total_var, _EPS)))
+<span class="kw">def</span> <span class="fn">polca_loss</span>(reconstruction, latent, target, labels=<span class="kw">None</span>, *,
+               alpha=ALPHA, beta=BETA, gamma=GAMMA, eps=EPS_COM,
+               logits=<span class="kw">None</span>, classifier=<span class="kw">None</span>,
+               return_components=<span class="kw">False</span>):
+    <span class="com">"""
+    L_polca = L_rec + L_class + alpha L_ort + beta L_com + gamma L_var
+    """</span>
+    rec = reconstruction_loss(reconstruction, target)
+    ort = orthogonality_loss(latent)
+    com = center_of_mass_loss(latent, eps=eps)
+    var = variance_loss(latent)
+    <span class="kw">if</span> labels <span class="kw">is</span> <span class="kw">None</span>:
+        cls = _zeros_like_scalar(rec, <span class="num">0.0</span>)          <span class="com"># unsupervised mode</span>
+    <span class="kw">else</span>:
+        latent_t = latent <span class="kw">if</span> _is_torch(latent) <span class="kw">else</span> torch.as_tensor(latent)
+        <span class="kw">if</span> classifier <span class="kw">is</span> <span class="kw">not</span> <span class="kw">None</span>:
+            class_logits = classifier(latent_t)
+        <span class="kw">elif</span> logits <span class="kw">is</span> <span class="kw">not</span> <span class="kw">None</span>:
+            class_logits = logits <span class="kw">if</span> _is_torch(logits) <span class="kw">else</span> torch.as_tensor(logits)
+        <span class="kw">else</span>:
+            labels_t = labels <span class="kw">if</span> _is_torch(labels) <span class="kw">else</span> torch.as_tensor(labels)
+            num_classes = <span class="kw">int</span>(labels_t.max().item()) + <span class="num">1</span>
+            head = _build_default_classifier(latent_t.shape[<span class="num">-1</span>], num_classes).to(
+                device=latent_t.device, dtype=latent_t.dtype
+            )
+            class_logits = head(latent_t)
+        cls = classification_loss(class_logits, labels, class_criterion)
+    total = rec + cls + alpha * ort + beta * com + gamma * var
+    <span class="kw">if</span> return_components:
+        <span class="kw">return</span> POLCALossOutput(total=total, rec=rec, cls=cls, ort=ort,
+                                com=com, var=var,
+                                extra={<span class="str">"latent_variances"</span>: latent_variances(latent)})
+    <span class="kw">return</span> total</code></pre>
+
+    <h3>src/polca/model.py &mdash; the network</h3>
+<pre><code>ACTIVATIONS: <span class="kw">dict</span>[<span class="kw">str</span>, <span class="kw">type</span>[nn.Module]] = {
+    <span class="str">"relu"</span>: nn.ReLU, <span class="str">"leaky_relu"</span>: nn.LeakyReLU, <span class="str">"elu"</span>: nn.ELU,
+    <span class="str">"gelu"</span>: nn.GELU, <span class="str">"silu"</span>: nn.SiLU,
+    <span class="str">"tanh"</span>: nn.Tanh, <span class="str">"sigmoid"</span>: nn.Sigmoid,
+}
+<span class="kw">def</span> <span class="fn">build_mlp</span>(dims, activation=<span class="str">"relu"</span>, final_activation=<span class="kw">False</span>):
+    <span class="com">"""Build a fully connected MLP, e.g. [784, 64, 32, 8]."""</span>
+    act_cls = _activation(activation)
+    layers = []
+    <span class="kw">for</span> index <span class="kw">in</span> <span class="kw">range</span>(<span class="kw">len</span>(dims) - <span class="num">1</span>):
+        layers.append(nn.Linear(dims[index], dims[index + <span class="num">1</span>]))
+        is_last = index == <span class="kw">len</span>(dims) - <span class="num">2</span>
+        <span class="kw">if</span> <span class="kw">not</span> is_last <span class="kw">or</span> final_activation:
+            layers.append(act_cls())
+    <span class="kw">return</span> nn.Sequential(*layers)
+<span class="kw">class</span> <span class="dec">POLCANet</span>(nn.Module):
+    <span class="com">"""
+    Autoencoder used by POLCA Net.
+    No activation is applied to the latent code: the POLCA loss needs
+    well-defined variances and inner products of the latent vectors, and a
+    squashing activation would distort both the variance ordering and the
+    orthogonality measure.
+    """</span>
+    <span class="kw">def</span> <span class="fn">__init__</span>(self, input_dim, latent_dim=<span class="num">8</span>,
+                 hidden_dims=(<span class="num">64</span>, <span class="num">32</span>), linear_decoder=<span class="kw">False</span>,
+                 activation=<span class="str">"relu"</span>):
+        <span class="kw">super</span>().__init__()
+        self.input_dim = <span class="kw">int</span>(input_dim)
+        self.latent_dim = <span class="kw">int</span>(latent_dim)
+        self.hidden_dims = <span class="kw">tuple</span>(<span class="kw">int</span>(h) <span class="kw">for</span> h <span class="kw">in</span> hidden_dims)
+        self.linear_decoder = <span class="kw">bool</span>(linear_decoder)
+        <span class="com"># encoder: input_dim -&gt; hidden... -&gt; latent_dim (identity activation)</span>
+        encoder_dims = [self.input_dim, *self.hidden_dims, self.latent_dim]
+        self.encoder = build_mlp(encoder_dims, activation=activation, final_activation=<span class="kw">False</span>)
+        <span class="com"># decoder: optional single linear layer (PCA-like) or a mirrored MLP</span>
+        <span class="kw">if</span> self.linear_decoder:
+            self.decoder = nn.Sequential(nn.Linear(self.latent_dim, self.input_dim))
+        <span class="kw">else</span>:
+            decoder_dims = [self.latent_dim, *reversed(self.hidden_dims), self.input_dim]
+            self.decoder = build_mlp(decoder_dims, activation=activation, final_activation=<span class="kw">False</span>)
+    <span class="kw">def</span> <span class="fn">encode</span>(self, x):
+        <span class="kw">return</span> self.encoder(x)
+    <span class="kw">def</span> <span class="fn">decode</span>(self, z):
+        <span class="kw">return</span> self.decoder(z)
+    <span class="kw">def</span> <span class="fn">forward</span>(self, x):
+        z = self.encode(x)
+        x_hat = self.decode(z)
+        <span class="kw">return</span> x_hat, z
+<span class="kw">class</span> <span class="dec">Autoencoder</span>(POLCANet):
+    <span class="com">"""
+    Plain autoencoder baseline (no POLCA constraints).
+    The POLCA-specific regularisers live in the loss, not in the network, so
+    the baseline simply optimises L_rec (and optionally L_class) with the
+    same architecture.  Keeping the baseline as a subclass guarantees that
+    both models share exactly the same capacity, which makes the ablation in
+    the report fair.
+    """</span>
+    <span class="kw">def</span> <span class="fn">__init__</span>(self, input_dim, latent_dim=<span class="num">8</span>,
+                 hidden_dims=(<span class="num">64</span>, <span class="num">32</span>), linear_decoder=<span class="kw">False</span>,
+                 activation=<span class="str">"relu"</span>):
+        <span class="kw">super</span>().__init__(input_dim=input_dim, latent_dim=latent_dim,
+                         hidden_dims=hidden_dims, linear_decoder=linear_decoder,
+                         activation=activation)
+        self.is_polca = <span class="kw">False</span>
+    <span class="kw">@property</span>
+    <span class="kw">def</span> <span class="fn">use_polca_constraints</span>(self):
+        <span class="kw">return</span> <span class="kw">False</span></code></pre>
+
+    <ul class="filelist">
+      <li><span class="path">src/polca/losses.py</span> <span class="desc">&mdash; the five loss terms and the composite objective</span></li>
+      <li><span class="path">src/polca/model.py</span> <span class="desc">&mdash; the autoencoder and the plain baseline</span></li>
+      <li><span class="path">src/polca/data.py</span> <span class="desc">&mdash; dataset loaders and deterministic splits</span></li>
+      <li><span class="path">src/metrics.py</span> <span class="desc">&mdash; NRMSE, PSNR, SSIM and the two PCA-property diagnostics</span></li>
+      <li><span class="path">src/baselines.py</span> <span class="desc">&mdash; PCA, LDA and autoencoder baselines behind one interface</span></li>
+      <li><span class="path">src/train.py</span> <span class="desc">&mdash; training loop, ablation switches, JSON output</span></li>
+      <li><span class="path">src/evaluate.py</span> <span class="desc">&mdash; four linear classifiers, Accuracy and F1, tidy CSV</span></li>
+    </ul>
+  </section>
+
+  <!-- ================= EXPERIMENTS ================= -->
+  <section id="experiments">
+    <h2>Experiments</h2>
+    <p>
+      The evaluation follows the paper's protocol: reconstruction quality is measured with
+      NRMSE, PSNR and SSIM, and the quality of the latent space for a downstream task is
+      measured by training four linear classifiers (Perceptron, Ridge, Logistic
+      Regression, Linear SVM) on the latent features and reporting Accuracy and F1.
+    </p>
+
+    <table>
+      <caption>Experimental matrix (three seeds: 5, 6, 7).</caption>
+      <thead>
+        <tr><th>Axis</th><th>Values</th></tr>
+      </thead>
+      <tbody>
+        <tr><td>Datasets</td><td><code>digits</code> (offline), <code>mnist</code>, <code>fashion_mnist</code></td></tr>
+        <tr><td>Methods</td><td>PCA (k = 8, 16, 32), LDA, Autoencoder, POLCA-Net (unsupervised), POLCA-Net + <code>L_class</code></td></tr>
+        <tr><td>Reconstruction metrics</td><td>NRMSE, PSNR, SSIM</td></tr>
+        <tr><td>Classification metrics</td><td>Accuracy, F1 (macro) over Perceptron / Ridge / Logistic Regression / Linear SVM</td></tr>
+        <tr><td>PCA-property diagnostics</td><td>Latent orthogonality error, variance-ordering score</td></tr>
+        <tr><td>Ablations</td><td>Remove <code>L_ort</code>, <code>L_com</code> or <code>L_var</code> individually</td></tr>
+      </tbody>
+    </table>
+
+    <h3>Figures</h3>
+    <p class="muted">
+      All figures are produced by <code>src/make_figures.py</code> into
+      <code>results/figures/</code>. The images below are referenced with relative paths,
+      so they appear automatically once the experiment run has been executed.
+    </p>
+
+    <figure>
+      <img src="../results/figures/reconstruction_grid.png"
+           alt="Reconstruction grid comparing original images with PCA, autoencoder and POLCA-Net reconstructions">
+      <figcaption>Fig. 1 &mdash; Reconstruction grid (original / PCA / Autoencoder / POLCA-Net):
+        <code>results/figures/reconstruction_grid.png</code></figcaption>
+    </figure>
+
+    <div class="grid">
+      <figure>
+        <img src="../results/figures/latent_orthogonality.png"
+             alt="Heat map of the absolute latent Gram matrix for PCA and POLCA-Net">
+        <figcaption>Fig. 2 &mdash; Latent orthogonality heat map:
+          <code>results/figures/latent_orthogonality.png</code></figcaption>
+      </figure>
+      <figure>
+        <img src="../results/figures/variance_ordering.png"
+             alt="Bar chart of per-component latent variance for PCA and POLCA-Net">
+        <figcaption>Fig. 3 &mdash; Variance ordering of the latent components:
+          <code>results/figures/variance_ordering.png</code></figcaption>
+      </figure>
+      <figure>
+        <img src="../results/figures/classification_metrics.png"
+             alt="Grouped bar chart comparing the four linear classifiers across methods">
+        <figcaption>Fig. 4 &mdash; Classification accuracy for the four linear classifiers:
+          <code>results/figures/classification_metrics.png</code></figcaption>
+      </figure>
+      <figure>
+        <img src="../results/figures/ablation.png"
+             alt="Bar chart showing the contribution of each loss term">
+        <figcaption>Fig. 5 &mdash; Loss-term ablation:
+          <code>results/figures/ablation.png</code></figcaption>
+      </figure>
+    </div>
+  </section>
+
+  <!-- ================= RESULTS ================= -->
+  <section id="results">
+    <h2>Results</h2>
+    <p>
+      The table below is generated from <code>results/metrics.csv</code>. Placeholder
+      cells are shown as an em dash and are filled with the measured values once the
+      experiment run completes; nothing in this repository is an invented number.
+    </p>
+
+    <table>
+      <caption>Reconstruction and classification metrics on <code>digits</code> (mean &plusmn; std over three seeds).</caption>
+      <thead>
+        <tr>
+          <th>Method</th>
+          <th>NRMSE &darr;</th>
+          <th>PSNR &uarr;</th>
+          <th>SSIM &uarr;</th>
+          <th>Accuracy &uarr;</th>
+          <th>F1 &uarr;</th>
+        </tr>
+      </thead>
+      <tbody>
+        <tr><td>PCA (k = 8)</td><td class="num">&mdash;</td><td class="num">&mdash;</td><td class="num">&mdash;</td><td class="num">&mdash;</td><td class="num">&mdash;</td></tr>
+        <tr><td>PCA (k = 16)</td><td class="num">&mdash;</td><td class="num">&mdash;</td><td class="num">&mdash;</td><td class="num">&mdash;</td><td class="num">&mdash;</td></tr>
+        <tr><td>PCA (k = 32)</td><td class="num">&mdash;</td><td class="num">&mdash;</td><td class="num">&mdash;</td><td class="num">&mdash;</td><td class="num">&mdash;</td></tr>
+        <tr><td>LDA</td><td class="num">&mdash;</td><td class="num">&mdash;</td><td class="num">&mdash;</td><td class="num">&mdash;</td><td class="num">&mdash;</td></tr>
+        <tr><td>Autoencoder</td><td class="num">&mdash;</td><td class="num">&mdash;</td><td class="num">&mdash;</td><td class="num">&mdash;</td><td class="num">&mdash;</td></tr>
+        <tr><td><strong>POLCA-Net</strong></td><td class="num">&mdash;</td><td class="num">&mdash;</td><td class="num">&mdash;</td><td class="num">&mdash;</td><td class="num">&mdash;</td></tr>
+        <tr><td><strong>POLCA-Net + <code>L_class</code></strong></td><td class="num">&mdash;</td><td class="num">&mdash;</td><td class="num">&mdash;</td><td class="num">&mdash;</td><td class="num">&mdash;</td></tr>
+      </tbody>
+    </table>
+
+    <div class="note">
+      <strong>Reported by the authors.</strong> In arXiv:2410.07289 the authors report that
+      POLCA-Net improves the reconstruction quality (NRMSE, PSNR, SSIM) over PCA and over
+      a plain autoencoder, and achieves higher downstream classification accuracy and F1
+      than PCA and LDA, over their set of 16 image datasets. Those are the paper's
+      findings, quoted as such &mdash; they are not measurements from this repository.
+      Where the seed-to-seed spread in our own runs exceeds the gap between two
+      methods, the comparison is reported as inconclusive rather than as a win.
+    </div>
+  </section>
+
+  <!-- ================= REPORT ================= -->
+  <section id="report">
+    <h2>Report</h2>
+    <p>
+      The full write-up (six sections, as required by the assignment brief) is available
+      in Word and PDF:
+    </p>
+    <ul>
+      <li><a href="../report/AI_Assignment3_Report.pdf">AI_Assignment3_Report.pdf</a></li>
+      <li><a href="../report/AI_Assignment3_Report.docx">AI_Assignment3_Report.docx</a></li>
+    </ul>
+    <p class="muted">
+      The document is generated by <code>report/build_report.py</code>, which reads every
+      number from <code>results/</code> and refuses to emit a value that is not present
+      there.
+    </p>
+  </section>
+
+  <!-- ================= AI WORKFLOW ================= -->
+  <section id="ai">
+    <h2>How the AI Did It</h2>
+    <p>
+      The assignment requires an AI tool to perform the algorithm search, the programming
+      and the report writing. The complete prompt log &mdash; every prompt issued, what
+      the agent answered, what was accepted and what had to be corrected &mdash; is
+      recorded in <a href="../AI_PROMPTS.md"><code>AI_PROMPTS.md</code></a> and forms
+      the basis of Sections 1, 3 and 5 of the report.
+    </p>
+    <ol>
+      <li><strong>Decompose the brief</strong> &mdash; the agent turned the assignment into nine sub-tasks and stated what the student must verify by hand.</li>
+      <li><strong>Search</strong> &mdash; six web queries produced seven candidate algorithms (UMAP, t-SNE, Kernel PCA, Diffusion Maps, &sigma;-PCA, Deep Factorized Metric Learning, POLCA Net).</li>
+      <li><strong>Select</strong> &mdash; a nine-column comparison table; POLCA-Net wins because the paper itself frames it as an extension of PCA and LDA to non-linear domains and reports on a reproducible image benchmark.</li>
+      <li><strong>Read the paper</strong> &mdash; the five loss equations, the hyper-parameters and the evaluation protocol were extracted verbatim; two genuinely ambiguous conventions were flagged rather than guessed.</li>
+      <li><strong>Implement</strong> &mdash; one prompt per module, each restating the exact formulas so the agent could not substitute a plausible-looking approximation.</li>
+      <li><strong>Verify and correct</strong> &mdash; shape assertions, an analytic orthogonality check (an exactly orthogonal latent set must give <code>L_ort</code> &asymp; 0), a variance-ordering check, a degenerate-batch check, a gradient-coverage check and a determinism check. Five real bug classes were caught this way, including a double-counted symmetric off-diagonal sum in <code>L_ort</code> and an L2 normalisation applied to the wrong axis.</li>
+      <li><strong>Run and validate</strong> &mdash; three seeds; comparisons whose spread exceeds the gap are flagged as inconclusive instead of being reported as wins.</li>
+      <li><strong>Write the report</strong> &mdash; generated from the metrics files, with a guard that forbids inserting any number that is not in <code>results/</code>.</li>
+    </ol>
+    <p class="muted">
+      Read <a href="../AI_PROMPTS.md"><code>AI_PROMPTS.md</code></a> for the verbatim
+      prompts, including the points where the agent was wrong and had to be corrected.
+    </p>
+  </section>
+
+</main>
+
+<footer class="site">
+  <div class="inner">
+    <p>
+      <strong>POLCA-Net &mdash; AI Assignment #3</strong><br>
+      CISC3024 Pattern Recognition &middot; November 2026 &middot;
+      Author: &lt;Student Name / Matric No.&gt; &middot;
+      Supervisor: &lt;Lecturer Name&gt;
+    </p>
+    <p>
+      Algorithm: H. Martin, F. Perozo, M. Lopez, <em>Principal Orthogonal Latent Components
+      Analysis (POLCA Net)</em>, arXiv:2410.07289, 2024.
+    </p>
+    <p>
+      Licence: <span class="mono">MIT</span> &mdash; placeholder, to be confirmed.
+      &middot; This page is self-contained and renders fully offline.
+    </p>
+  </div>
+</footer>
+
+</body>
+</html>

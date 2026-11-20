@@ -1,0 +1,42 @@
+# Downloaded datasets (re-downloaded on demand by src/polca/data.py)
+data/
+
+# Python caches
+__pycache__/
+*.py[cod]
+*.egg-info/
+.pytest_cache/
+
+# Environments
+.venv/
+venv/
+env/
+
+# Notebook checkpoints
+.ipynb_checkpoints/
+
+# Office lock files (Word)
+~$*
+
+# Temporary / scratch artefacts
+tmp/
+*.tmp
+*.log
+
+# Scratch output from manual probes / smoke runs
+probe_out.txt
+proc.txt
+mem.txt
+calib.py
+ps_list.ps1
+ps_mem.ps1
+pip_install.log
+_r.log
+results/_smoke/
+results/_smoke2/
+results/_probe/
+results/_probe2/
+results/_figtest/
+
+# Large intermediate tensors cached by src/evaluate.py
+results/latents.npz
