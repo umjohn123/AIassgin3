@@ -76,11 +76,11 @@ def _equation_block(
     math = render_mathml(latex)
     return (
         f'{indent}<figure class="equation">\n'
+        f"{indent}  <figcaption>{title}</figcaption>\n"
         f'{indent}  <div class="math-display">\n'
         f"{indent}    {math}\n"
         f"{indent}  </div>\n"
         f'{indent}  <span class="equation-number">({number})</span>\n'
-        f"{indent}  <figcaption>{title}</figcaption>\n"
         f"{indent}</figure>"
     )
 

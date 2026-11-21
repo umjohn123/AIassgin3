@@ -290,6 +290,24 @@ check(
     [int(n) for n in _numbered] == list(range(1, expected_display + 1)),
     str(_numbered),
 )
+# The display equations must keep the MathML element's own layout.  A
+# plain "display: block" replaces it with an ordinary block box, and the
+# browser then lays the formula out as inline text: every symbol ends up
+# on a line of its own, and the equations of the page are pushed into a
+# tall stack that reads as one block of text.  The native value is
+# "block math", and it also centres the formula.
+check(
+    "the display equations keep the native MathML layout",
+    re.search(r"display:\s*block\s*math", html) is not None,
+)
+# The scrolling box has to be the wrapper, not the MathML element: an
+# overflow on the MathML element would clip the fraction bars and the
+# radicals of a formula that is too wide for the column.
+check(
+    "the equation wrapper carries the horizontal scroll",
+    re.search(r"\.equation\s*>\s*\.math-display\s*\{[^}]*overflow-x:\s*auto", html, re.S)
+    is not None,
+)
 
 print("\n== GitHub Pages publishing source ==")
 # GitHub Pages publishes exactly one folder.  The project page lives in

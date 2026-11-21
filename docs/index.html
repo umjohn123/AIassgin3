@@ -143,46 +143,79 @@
     -webkit-font-smoothing: antialiased;
   }
   math[display="block"] {
+    /* The MathML element must keep its native "block math" display.  A
+       plain "display: block" turns it into an ordinary block box, and the
+       browser then lays its children out as inline text: every symbol
+       ends up on a line of its own, and the formula that should occupy
+       one line becomes a tall stack of them.  The native value also
+       centres the formula, which is what a display equation needs.
+       Browsers that do not know the value fall back to the plain block,
+       which is wrong but legible; every browser that renders MathML at
+       all knows "block math". */
     display: block;
+    display: block math;
     margin: 0;
-    /* An over-long equation scrolls rather than overflowing the page. */
-    overflow-x: auto;
-    overflow-y: hidden;
     padding: 0.1rem 0;
   }
-  /* A display equation: the number in the right margin, the equation
-     itself centred in the remaining column. */
+  /* A display equation.  The caption names the equation and sits above
+     it, so that a reader meets "name, then formula" instead of a column
+     of formulas each trailed by a line of small print.  The number is
+     carried to the right margin by the grid, the way a printed paper
+     does it, and the equation itself stays centred in the column. */
   .equation {
     display: grid;
     grid-template-columns: 1fr auto;
     align-items: center;
-    column-gap: 1rem;
-    margin: 1.5rem 0;
-    padding: 0.15rem 0;
+    column-gap: 1.25rem;
+    margin: 2.5rem 0;
+    padding-top: 1.75rem;
+    border-top: 1px solid var(--line);
   }
+  /* A hairline above every equation but the first of a group.  A run of
+     display equations reads as one block of mathematics when the
+     equations are tied together by a rule, and as a list of unrelated
+     formulae when they are not. */
+  .equation:first-of-type {
+    padding-top: 0;
+    border-top: 0;
+  }
+  /* The box that carries the equation.  It is the one that scrolls when
+     an equation is too wide for the column, so that the equation itself
+     keeps the layout the MathML engine gives it. */
   .equation > .math-display {
     grid-column: 1;
+    grid-row: 2;
     min-width: 0;
+    overflow-x: auto;
+    overflow-y: hidden;
+    padding-bottom: 0.2rem;
   }
   .equation > .equation-number {
     grid-column: 2;
-    grid-row: 1;
+    grid-row: 2;
     color: var(--fg-faint);
     font-size: 0.9rem;
     font-variant-numeric: tabular-nums;
-    /* The number is aligned on the baseline of the equation, not on the
-       centre of the line: a display equation with a tall fraction needs
-       its number to sit at the mathematical axis, not halfway up. */
-    align-self: baseline;
+    /* The number is aligned on the mathematical axis of the equation, not
+       on its baseline.  A baseline alignment would lift the number of an
+       equation with a tall fraction by the whole height of the fraction,
+       so that the numbers of a page of equations would not sit on a
+       common line; the axis is where the centre of the formula is. */
+    align-self: center;
+    /* The axis of a formula sits a little above the middle of its line,
+       at about half the x-height above the baseline. */
+    margin-top: -0.35em;
   }
   .equation > figcaption {
     grid-column: 1 / -1;
-    grid-row: 2;
-    color: var(--fg-faint);
-    font-size: 0.82rem;
-    line-height: 1.45;
-    margin: 0.5rem 0 0;
-    text-align: center;
+    grid-row: 1;
+    color: var(--fg-soft);
+    font-size: 0.8rem;
+    font-weight: 600;
+    line-height: 1.4;
+    letter-spacing: 0.02em;
+    margin: 0 0 0.65rem;
+    text-align: left;
   }
   /* An inline symbol keeps the line height of the prose around it. */
   math:not([display="block"]) {
@@ -198,11 +231,10 @@
     .equation { grid-template-columns: 1fr; }
     .equation > .equation-number {
       grid-column: 1;
-      grid-row: 2;
+      grid-row: 3;
       text-align: right;
       font-size: 0.82rem;
     }
-    .equation > figcaption { grid-row: 3; }
   }
 
   table {
@@ -346,53 +378,53 @@
          the MathML here. -->
     <!-- BEGIN EQUATIONS -->
         <figure class="equation">
+          <figcaption>Composite objective</figcaption>
           <div class="math-display">
             <math xmlns="http://www.w3.org/1998/Math/MathML" display="block"><msub><mi>L</mi><mrow><mtext mathvariant="normal">polca</mtext></mrow></msub><mspace width="0.278em"/><mo lspace="0.28em" rspace="0.28em">=</mo><mspace width="0.278em"/><msub><mi>L</mi><mrow><mtext mathvariant="normal">rec</mtext></mrow></msub><mspace width="0.278em"/><mo lspace="0.28em" rspace="0.28em">+</mo><mspace width="0.278em"/><msub><mi>L</mi><mrow><mtext mathvariant="normal">class</mtext></mrow></msub><mspace width="0.278em"/><mo lspace="0.28em" rspace="0.28em">+</mo><mspace width="0.278em"/><mi mathvariant="italic">α</mi><mspace width="0.167em"/><msub><mi>L</mi><mrow><mtext mathvariant="normal">ort</mtext></mrow></msub><mspace width="0.278em"/><mo lspace="0.28em" rspace="0.28em">+</mo><mspace width="0.278em"/><mi mathvariant="italic">β</mi><mspace width="0.167em"/><msub><mi>L</mi><mrow><mtext mathvariant="normal">com</mtext></mrow></msub><mspace width="0.278em"/><mo lspace="0.28em" rspace="0.28em">+</mo><mspace width="0.278em"/><mi mathvariant="italic">γ</mi><mspace width="0.167em"/><msub><mi>L</mi><mrow><mtext mathvariant="normal">var</mtext></mrow></msub></math>
           </div>
           <span class="equation-number">(1)</span>
-          <figcaption>Composite objective</figcaption>
         </figure>
         <figure class="equation">
+          <figcaption>Reconstruction term</figcaption>
           <div class="math-display">
             <math xmlns="http://www.w3.org/1998/Math/MathML" display="block"><msub><mi>L</mi><mrow><mtext mathvariant="normal">rec</mtext></mrow></msub><mspace width="0.278em"/><mo lspace="0.28em" rspace="0.28em">=</mo><mspace width="0.278em"/><mtext mathvariant="normal">mean</mtext><mrow><mo stretchy="true" fence="true">(</mo><mrow><msup><mrow><mo stretchy="true" fence="true">(</mo><mrow><mover accent="true"><mrow><mi>x</mi></mrow><mo stretchy="false">ˆ</mo></mover><mo lspace="0.28em" rspace="0.28em">-</mo><mi>x</mi></mrow><mo stretchy="true" fence="true">)</mo></mrow><mrow><mn>2</mn></mrow></msup></mrow><mo stretchy="true" fence="true">)</mo></mrow></math>
           </div>
           <span class="equation-number">(2)</span>
-          <figcaption>Reconstruction term</figcaption>
         </figure>
         <figure class="equation">
+          <figcaption>Orthogonality penalty</figcaption>
           <div class="math-display">
             <math xmlns="http://www.w3.org/1998/Math/MathML" display="block"><msub><mi>L</mi><mrow><mtext mathvariant="normal">ort</mtext></mrow></msub><mspace width="0.278em"/><mo lspace="0.28em" rspace="0.28em">=</mo><mspace width="0.278em"/><mfrac><mrow><mn>2</mn></mrow><mrow><mi>n</mi><mspace width="0.167em"/><mrow><mo stretchy="true" fence="true">(</mo><mrow><mi>n</mi><mo lspace="0.28em" rspace="0.28em">-</mo><mn>1</mn></mrow><mo stretchy="true" fence="true">)</mo></mrow></mrow></mfrac><munder><mo stretchy="true" largeop="true" movablelimits="false">∑</mo><mrow><mn>1</mn><mo lspace="0.28em" rspace="0.28em">≤</mo><mi>i</mi><mo lspace="0.28em" rspace="0.28em">&lt;</mo><mi>j</mi><mo lspace="0.28em" rspace="0.28em">≤</mo><mi>n</mi></mrow></munder><mrow><msup><msub><mi>S</mi><mrow><mi>i</mi><mi>j</mi></mrow></msub><mrow><mn>2</mn></mrow></msup></mrow><mspace width="0.278em"/><mo lspace="0em" rspace="0.167em">,</mo><mspace width="2em"/><mi>S</mi><mo lspace="0.28em" rspace="0.28em">=</mo><msup><mover accent="true"><mrow><mi>Z</mi></mrow><mo stretchy="false">ˆ</mo></mover><mrow><mi>T</mi></mrow></msup><mover accent="true"><mrow><mi>Z</mi></mrow><mo stretchy="false">ˆ</mo></mover></math>
           </div>
           <span class="equation-number">(3)</span>
-          <figcaption>Orthogonality penalty</figcaption>
         </figure>
         <figure class="equation">
+          <figcaption>Variance regulariser</figcaption>
           <div class="math-display">
             <math xmlns="http://www.w3.org/1998/Math/MathML" display="block"><msub><mi>L</mi><mrow><mtext mathvariant="normal">var</mtext></mrow></msub><mspace width="0.278em"/><mo lspace="0.28em" rspace="0.28em">=</mo><mspace width="0.278em"/><munderover><mo stretchy="true" largeop="true" movablelimits="false">∑</mo><mrow><mi>i</mi><mo lspace="0.28em" rspace="0.28em">=</mo><mn>0</mn></mrow><mrow><mi>n</mi><mo lspace="0.28em" rspace="0.28em">-</mo><mn>1</mn></mrow></munderover><mrow><mi>𝔼</mi><mrow><mo stretchy="true" fence="true">[</mo><mrow><msup><mrow><mo stretchy="true" fence="true">(</mo><mrow><msub><mi>z</mi><mrow><mi>i</mi></mrow></msub><mo lspace="0.28em" rspace="0.28em">-</mo><msub><mi mathvariant="italic">μ</mi><mrow><mi>i</mi></mrow></msub></mrow><mo stretchy="true" fence="true">)</mo></mrow><mrow><mn>2</mn></mrow></msup></mrow><mo stretchy="true" fence="true">]</mo></mrow></mrow></math>
           </div>
           <span class="equation-number">(4)</span>
-          <figcaption>Variance regulariser</figcaption>
         </figure>
         <figure class="equation">
+          <figcaption>Centre-of-mass term (variance ordering)</figcaption>
           <div class="math-display">
             <math xmlns="http://www.w3.org/1998/Math/MathML" display="block"><msub><mi>L</mi><mrow><mtext mathvariant="normal">com</mtext></mrow></msub><mspace width="0.278em"/><mo lspace="0.28em" rspace="0.28em">=</mo><mspace width="0.278em"/><mfrac><mrow><msubsup><mo>∑</mo><mrow><mi>i</mi><mo lspace="0.28em" rspace="0.28em">=</mo><mn>0</mn></mrow><mrow><mi>n</mi><mo lspace="0.28em" rspace="0.28em">-</mo><mn>1</mn></mrow></msubsup><mrow><msup><mi>i</mi><mrow><mn>1</mn><mo lspace="0.28em" rspace="0.28em">+</mo><mi mathvariant="italic">ε</mi></mrow></msup><mspace width="0.167em"/><mi>𝔼</mi><mrow><mo stretchy="true" fence="true">[</mo><mrow><msup><mrow><mo stretchy="true" fence="true">(</mo><mrow><msub><mi>z</mi><mrow><mi>i</mi></mrow></msub><mo lspace="0.28em" rspace="0.28em">-</mo><msub><mi mathvariant="italic">μ</mi><mrow><mi>i</mi></mrow></msub></mrow><mo stretchy="true" fence="true">)</mo></mrow><mrow><mn>2</mn></mrow></msup></mrow><mo stretchy="true" fence="true">]</mo></mrow></mrow></mrow><mrow><mi>n</mi><mspace width="0.167em"/><msub><mi>L</mi><mrow><mtext mathvariant="normal">var</mtext></mrow></msub></mrow></mfrac><mspace width="0.278em"/><mo lspace="0em" rspace="0.167em">,</mo><mspace width="2em"/><mi mathvariant="italic">ε</mi><mo lspace="0.28em" rspace="0.28em">=</mo><mn>0.25</mn></math>
           </div>
           <span class="equation-number">(5)</span>
-          <figcaption>Centre-of-mass term (variance ordering)</figcaption>
         </figure>
         <figure class="equation">
+          <figcaption>Optional supervised term</figcaption>
           <div class="math-display">
             <math xmlns="http://www.w3.org/1998/Math/MathML" display="block"><msub><mi>L</mi><mrow><mtext mathvariant="normal">class</mtext></mrow></msub><mspace width="0.278em"/><mo lspace="0.28em" rspace="0.28em">=</mo><mspace width="0.278em"/><mtext mathvariant="normal">CrossEntropy</mtext><mrow><mo stretchy="true" fence="true">(</mo><mrow><mtext mathvariant="normal">logits</mtext><mrow><mo stretchy="true" fence="true">(</mo><mrow><mi>z</mi></mrow><mo stretchy="true" fence="true">)</mo></mrow><mo lspace="0em" rspace="0.167em">,</mo><mspace width="0.167em"/><mi>y</mi></mrow><mo stretchy="true" fence="true">)</mo></mrow></math>
           </div>
           <span class="equation-number">(6)</span>
-          <figcaption>Optional supervised term</figcaption>
         </figure>
         <figure class="equation">
+          <figcaption>Hyper-parameters of the reported run</figcaption>
           <div class="math-display">
             <math xmlns="http://www.w3.org/1998/Math/MathML" display="block"><mi mathvariant="italic">α</mi><mo lspace="0.28em" rspace="0.28em">=</mo><msup><mn>10</mn><mrow><mo lspace="0em" rspace="0.05em">-</mo><mn>2</mn></mrow></msup><mspace width="0.167em"/><mo lspace="0em" rspace="0.167em">,</mo><mspace width="2em"/><mi mathvariant="italic">β</mi><mo lspace="0.28em" rspace="0.28em">=</mo><msup><mn>10</mn><mrow><mo lspace="0em" rspace="0.05em">-</mo><mn>2</mn></mrow></msup><mspace width="0.167em"/><mo lspace="0em" rspace="0.167em">,</mo><mspace width="2em"/><mi mathvariant="italic">γ</mi><mo lspace="0.28em" rspace="0.28em">=</mo><msup><mn>10</mn><mrow><mo lspace="0em" rspace="0.05em">-</mo><mn>7</mn></mrow></msup><mspace width="0.167em"/><mo lspace="0em" rspace="0.167em">,</mo><mspace width="2em"/><mi mathvariant="italic">ε</mi><mo lspace="0.28em" rspace="0.28em">=</mo><mn>0.25</mn><mspace width="0.278em"/><mo lspace="0em" rspace="0.167em">,</mo><mspace width="2em"/><mtext mathvariant="normal">batch</mtext><mo lspace="0.28em" rspace="0.28em">=</mo><mn>64</mn><mspace width="0.167em"/><mo lspace="0em" rspace="0.167em">,</mo><mspace width="2em"/><mtext mathvariant="normal">updates</mtext><mo lspace="0.28em" rspace="0.28em">=</mo><mn>20</mn><mspace width="0.167em"/><mn>000</mn><mspace width="0.278em"/><mo lspace="0em" rspace="0.167em">,</mo><mspace width="2em"/><mtext mathvariant="normal">seed</mtext><mo lspace="0.28em" rspace="0.28em">=</mo><mn>5</mn></math>
           </div>
           <span class="equation-number">(7)</span>
-          <figcaption>Hyper-parameters of the reported run</figcaption>
         </figure>
       <!-- END EQUATIONS -->
 
@@ -695,18 +727,18 @@ _EPS: float = 1e-12
          report/render_site_math.py from report/equations.py. -->
     <!-- BEGIN METRIC EQUATIONS -->
         <figure class="equation">
+          <figcaption>Reconstruction error</figcaption>
           <div class="math-display">
             <math xmlns="http://www.w3.org/1998/Math/MathML" display="block"><mtext mathvariant="normal">RMSE</mtext><mspace width="0.278em"/><mo lspace="0.28em" rspace="0.28em">=</mo><mspace width="0.278em"/><msqrt><mrow><mfrac><mrow><mn>1</mn></mrow><mrow><mi>M</mi></mrow></mfrac><munderover><mo stretchy="true" largeop="true" movablelimits="false">∑</mo><mrow><mi>k</mi><mo lspace="0.28em" rspace="0.28em">=</mo><mn>1</mn></mrow><mrow><mi>M</mi></mrow></munderover><msup><mrow><mo stretchy="true" fence="true">(</mo><mrow><msub><mi>x</mi><mrow><mi>k</mi></mrow></msub><mo lspace="0.28em" rspace="0.28em">-</mo><msub><mover accent="true"><mrow><mi>x</mi></mrow><mo stretchy="false">ˆ</mo></mover><mrow><mi>k</mi></mrow></msub></mrow><mo stretchy="true" fence="true">)</mo></mrow><mrow><mn>2</mn></mrow></msup></mrow></msqrt><mspace width="0.278em"/><mo lspace="0em" rspace="0.167em">,</mo><mspace width="2em"/><mtext mathvariant="normal">NRMSE</mtext><mspace width="0.278em"/><mo lspace="0.28em" rspace="0.28em">=</mo><mspace width="0.278em"/><mfrac><mrow><mtext mathvariant="normal">RMSE</mtext></mrow><mrow><mtext mathvariant="normal">max</mtext><mrow><mo stretchy="true" fence="true">(</mo><mrow><mi>x</mi></mrow><mo stretchy="true" fence="true">)</mo></mrow><mo lspace="0.28em" rspace="0.28em">-</mo><mtext mathvariant="normal">min</mtext><mrow><mo stretchy="true" fence="true">(</mo><mrow><mi>x</mi></mrow><mo stretchy="true" fence="true">)</mo></mrow></mrow></mfrac></math>
           </div>
           <span class="equation-number">(8)</span>
-          <figcaption>Reconstruction error</figcaption>
         </figure>
         <figure class="equation">
+          <figcaption>Peak signal-to-noise ratio</figcaption>
           <div class="math-display">
             <math xmlns="http://www.w3.org/1998/Math/MathML" display="block"><mtext mathvariant="normal">PSNR</mtext><mspace width="0.278em"/><mo lspace="0.28em" rspace="0.28em">=</mo><mspace width="0.278em"/><mn>10</mn><msub><mtext mathvariant="normal">log</mtext><mrow><mn>10</mn></mrow></msub><mrow><mo stretchy="true" fence="true">(</mo><mrow><mfrac><mrow><msup><mi>R</mi><mrow><mn>2</mn></mrow></msup></mrow><mrow><mtext mathvariant="normal">MSE</mtext></mrow></mfrac></mrow><mo stretchy="true" fence="true">)</mo></mrow><mspace width="0.278em"/><mo lspace="0em" rspace="0.167em">,</mo><mspace width="2em"/><mi>R</mi><mo lspace="0.28em" rspace="0.28em">=</mo><mn>1</mn><mtext mathvariant="normal"> for data in the unit interval</mtext></math>
           </div>
           <span class="equation-number">(9)</span>
-          <figcaption>Peak signal-to-noise ratio</figcaption>
         </figure>
       <!-- END METRIC EQUATIONS -->
 
