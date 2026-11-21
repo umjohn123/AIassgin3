@@ -173,7 +173,7 @@ AIassgin3/
 |   |-- assets/
 |   |   |-- figures/
 |   |   |-- report/
-|   |   |   |-- AI_Assignment3_Report.docx  (1182 KB, omitted)
+|   |   |   |-- AI_Assignment3_Report.docx  (1183 KB, omitted)
 |   |   |   `-- AI_Assignment3_Report.pdf  (1535 KB, omitted)
 |   |   `-- AI_PROMPTS.md
 |   |-- .gitkeep
@@ -185,7 +185,7 @@ AIassgin3/
 |-- report/
 |   |-- figures/
 |   |-- .gitkeep
-|   |-- AI_Assignment3_Report.docx  (1182 KB, omitted)
+|   |-- AI_Assignment3_Report.docx  (1183 KB, omitted)
 |   |-- AI_Assignment3_Report.pdf  (1535 KB, omitted)
 |   |-- build_report.py
 |   |-- docx_to_pdf.py
@@ -244,6 +244,7 @@ AIassgin3/
 |   `-- train.py
 |-- tests/
 |   |-- .gitkeep
+|   |-- final_audit.py
 |   |-- smoke_test.py
 |   `-- test_pipeline.py
 |-- .gitattributes
@@ -477,6 +478,7 @@ The pattern that these defects share is the reason the loop was structured aroun
   - Multiple seeds per configuration, with the mean reported, so that a difference between two methods can be compared against the across-seed variation rather than against a single realisation.
   - Every metric is persisted to results/metrics.csv, results/metrics.json and results/summary.md, and the report generator reads those files rather than transcribing values, which makes the numbers in this document traceable to the artefacts that produced them.
   - A smoke test in tests/ that exercises the data loading, the model, the loss and the evaluation path on a small subset, so that a broken import or an API mismatch is detected before the full experiment matrix is launched.
+  - A delivery audit in tests/ that checks, by reading the artefacts from disk, that every deliverable exists, that the experiment matrix has the expected shape, and that the report and the published site agree with the measured results.
 
 4. Experiment Settings and Results
 ==================================

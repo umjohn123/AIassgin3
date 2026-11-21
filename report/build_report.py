@@ -843,6 +843,8 @@ def build_tree_text(repo_root: Path) -> None:
         "ps_mem.ps1",
         "pip_install.log",
         "_r.log",
+        "commitmsg.txt",
+        "audit.txt",
     }
     lines: List[str] = [f"{repo_root.name}/"]
 
@@ -1700,6 +1702,10 @@ def build_report(results_dir: Path, figures_dir: Path, out_path: Path,
         "A smoke test in tests/ that exercises the data loading, the model, the "
         "loss and the evaluation path on a small subset, so that a broken import or "
         "an API mismatch is detected before the full experiment matrix is launched.",
+        "A delivery audit in tests/ that checks, by reading the artefacts from "
+        "disk, that every deliverable exists, that the experiment matrix has the "
+        "expected shape, and that the report and the published site agree with "
+        "the measured results.",
     ])
 
     # ===================================================================== #

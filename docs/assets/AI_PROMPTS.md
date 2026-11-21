@@ -964,6 +964,15 @@ The audit also re-validated the finished deliverables: 180 metric rows
 containing all six required sections and the live repository and Pages URLs, a site
 whose twelve assets all return HTTP 200, and a test suite of 12 passing tests.
 
+The audit was then made permanent as `tests/final_audit.py`, so the check is
+repeatable rather than a one-off observation. It reads every artefact the plan
+promises directly from disk and verifies that it exists, that the experiment matrix
+has the expected shape, that the report carries all six sections and the live URLs,
+and that every asset the published site references resolves inside `docs/`. The
+lesson it encodes is the one stated in Section 5.4: *audit the artefacts against
+the specification by listing them, not by re-running the scripts.* A script that
+exits with status zero is not evidence that its output exists.
+
 ---
 
 ## Appendix A — Where each prompt landed in the report

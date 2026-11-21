@@ -69,7 +69,8 @@ AIassgin3/
 │   └── make_figures.py     # all eight report figures
 ├── tests/
 │   ├── smoke_test.py       # shape, orthogonality and variance-ordering assertions
-│   └── test_pipeline.py    # end-to-end evaluation and figure generation
+│   ├── test_pipeline.py    # end-to-end evaluation and figure generation
+│   └── final_audit.py      # checks every deliverable of the plan is on disk and consistent
 ├── experiments/config.json # the run configuration used for the reported results
 ├── results/                # metrics.csv, metrics.json, summary.md, ablation.csv, figures/
 ├── report/                 # build_report.py, docx_to_pdf.py + the .docx / .pdf report
@@ -100,6 +101,21 @@ The `digits` dataset ships with scikit-learn, so this works fully offline:
 ```powershell
 python tests/smoke_test.py
 ```
+
+### Audit the delivered artefacts
+
+The audit script reads every artefact the assignment plan promises straight from
+disk and checks that it exists, is internally consistent and is wired up to the
+others. It needs no GPU and re-runs in a couple of seconds:
+
+```powershell
+python tests/final_audit.py
+```
+
+It verifies the deliverable checklist, the shape of the experiment matrix (180
+metric rows, 12 ablation rows, 8 figures), the six sections of the generated
+report, the live URLs in it, and that every asset the published site references
+resolves inside `docs/`.
 
 ### Train POLCA-Net
 
