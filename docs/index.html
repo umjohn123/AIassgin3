@@ -532,7 +532,7 @@ _EPS: float = 1e-12
       </thead>
       <tbody>
         <tr><td>Datasets</td><td><code>digits</code> (offline), <code>mnist</code>, <code>fashion_mnist</code></td></tr>
-        <tr><td>Methods</td><td>PCA (k = 8, 16, 32), LDA, Autoencoder, POLCA-Net (unsupervised), POLCA-Net + <code>L_class</code></td></tr>
+        <tr><td>Methods</td><td>PCA (k = 8), LDA, Autoencoder, POLCA-Net (unsupervised), POLCA-Net + <code>L_class</code></td></tr>
         <tr><td>Reconstruction metrics</td><td>NRMSE, PSNR, SSIM</td></tr>
         <tr><td>Classification metrics</td><td>Accuracy, F1 (macro) over Perceptron / Ridge / Logistic Regression / Linear SVM</td></tr>
         <tr><td>PCA-property diagnostics</td><td>Latent orthogonality error, variance-ordering score</td></tr>
@@ -661,7 +661,7 @@ _EPS: float = 1e-12
       <li><strong>Select</strong> &mdash; a nine-column comparison table; POLCA-Net wins because the paper itself frames it as an extension of PCA and LDA to non-linear domains and reports on a reproducible image benchmark.</li>
       <li><strong>Read the paper</strong> &mdash; the five loss equations, the hyper-parameters and the evaluation protocol were extracted verbatim; two genuinely ambiguous conventions were flagged rather than guessed.</li>
       <li><strong>Implement</strong> &mdash; one prompt per module, each restating the exact formulas so the agent could not substitute a plausible-looking approximation.</li>
-      <li><strong>Verify and correct</strong> &mdash; shape assertions, an analytic orthogonality check (an exactly orthogonal latent set must give <code>L_ort</code> &asymp; 0), a variance-ordering check, a degenerate-batch check, a gradient-coverage check and a determinism check. Five real bug classes were caught this way, including a double-counted symmetric off-diagonal sum in <code>L_ort</code> and an L2 normalisation applied to the wrong axis.</li>
+      <li><strong>Verify and correct</strong> &mdash; shape assertions, an analytic orthogonality check (an exactly orthogonal latent set must give <code>L_ort</code> &asymp; 0), a variance-ordering check, a degenerate-batch check, a gradient-coverage check and a determinism check. Seven real bug classes were caught this way, including a double-counted symmetric off-diagonal sum in <code>L_ort</code>, an L2 normalisation applied to the wrong axis, and a <code>channel_axis</code> argument that made the SSIM metric silently compute the similarity of an image's <em>rows</em> instead of the image.</li>
       <li><strong>Run and validate</strong> &mdash; three seeds; comparisons whose spread exceeds the gap are flagged as inconclusive instead of being reported as wins.</li>
       <li><strong>Write the report</strong> &mdash; generated from the metrics files, with a guard that forbids inserting any number that is not in <code>results/</code>.</li>
     </ol>

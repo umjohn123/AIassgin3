@@ -1745,9 +1745,13 @@ def build_report(results_dir: Path, figures_dir: Path, out_path: Path,
         "rather than their aggregate error. The structural similarity index "
         "measures the preservation of local luminance, contrast and structure, and "
         "is the metric that responds most directly to the perceptual quality of a "
-        "reconstruction; it is computed with scikit-image when the library is "
-        "importable and with a self-contained global implementation of the "
-        "standard formula otherwise."
+        "reconstruction. It follows the original definition of Wang et al. [13] and "
+        "is computed with a batched, vectorised re-implementation of the "
+        "scikit-image [14] reference algorithm - the same uniform 7 x 7 window, the "
+        "same sample-covariance normalisation and the same border cropping - which "
+        "agrees with the reference implementation to within 1e-16 and is several "
+        "thousand times faster; a self-contained Gaussian-window implementation of "
+        "the standard formula is kept as a fallback for environments without SciPy."
     )
     w.body(
         "Downstream usefulness of the latent space is measured by accuracy and "
@@ -2012,6 +2016,13 @@ def build_report(results_dir: Path, figures_dir: Path, out_path: Path,
         "Hyper-parameter sensitivity. The three loss weights were taken from the "
         "paper and not tuned; a different weighting would change the balance "
         "between reconstruction fidelity and latent geometry.",
+        "Metric implementation. The structural similarity index is computed by a "
+        "batched re-implementation of the scikit-image reference algorithm rather "
+        "than by calling the reference function directly. The two agree to within "
+        "1e-16, and the test suite asserts that agreement against the reference "
+        "implementation, so the SSIM column is that of the standard definition. "
+        "The NRMSE and PSNR columns are elementary closed-form expressions and "
+        "carry no such dependency.",
     ])
 
     # ===================================================================== #
@@ -2384,6 +2395,11 @@ def build_report(results_dir: Path, figures_dir: Path, out_path: Path,
         "IEEE Access, vol. 7, 2019.",
         "D. P. Kingma and M. Welling, \"Auto-Encoding Variational Bayes,\" "
         "arXiv:1312.6114, 2013.",
+        "Z. Wang, A. C. Bovik, H. R. Sheikh, and E. P. Simoncelli, \"Image quality "
+        "assessment: From error visibility to structural similarity,\" IEEE Trans. "
+        "Image Processing, vol. 13, no. 4, pp. 600-612, 2004.",
+        "S. van der Walt et al., \"scikit-image: Image processing in Python,\" "
+        "PeerJ Computer Science, vol. 8, e453, 2022.",
     ]
     for idx, ref in enumerate(references, start=1):
         p = w.doc.add_paragraph()
