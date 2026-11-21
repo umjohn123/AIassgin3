@@ -162,12 +162,19 @@ The generation prompts were deliberately narrow. Each prompt named a single file
 The repository produced by the agent has the following layout. The complete tree, as generated from the working copy at report-build time, is reproduced in the monospace block below.
 ```
 AIassgin3/
+|-- .pytest_cache/
+|   |-- v/
+|   |   `-- cache/
+|   |       `-- nodeids
+|   |-- .gitignore
+|   |-- CACHEDIR.TAG
+|   `-- README.md
 |-- docs/
 |   |-- assets/
 |   |   |-- figures/
 |   |   |-- report/
 |   |   |   |-- AI_Assignment3_Report.docx  (1182 KB, omitted)
-|   |   |   `-- AI_Assignment3_Report.pdf  (1527 KB, omitted)
+|   |   |   `-- AI_Assignment3_Report.pdf  (1535 KB, omitted)
 |   |   `-- AI_PROMPTS.md
 |   |-- .gitkeep
 |   |-- index.html
@@ -179,7 +186,7 @@ AIassgin3/
 |   |-- figures/
 |   |-- .gitkeep
 |   |-- AI_Assignment3_Report.docx  (1182 KB, omitted)
-|   |-- AI_Assignment3_Report.pdf  (1527 KB, omitted)
+|   |-- AI_Assignment3_Report.pdf  (1535 KB, omitted)
 |   |-- build_report.py
 |   |-- docx_to_pdf.py
 |   |-- report_text.md
@@ -219,7 +226,8 @@ AIassgin3/
 |   |-- metrics.json
 |   |-- run_digits.log
 |   |-- run_fashion.log
-|   `-- run_mnist.log
+|   |-- run_mnist.log
+|   `-- summary.md
 |-- src/
 |   |-- polca/
 |   |   |-- .gitkeep
@@ -241,11 +249,10 @@ AIassgin3/
 |-- .gitattributes
 |-- .gitignore
 |-- AI_PROMPTS.md
-|-- build_out.txt
-|-- err.txt
+|-- b.txt
 |-- merge_results.py
-|-- out.txt
 |-- README.md
+|-- regen_summary.py
 |-- requirements.txt
 |-- run_all.py
 `-- run_large.py
@@ -626,10 +633,11 @@ The process that worked in this assignment can be distilled into a checklist tha
   1. State the mathematical specification precisely, and ask the agent to quote the source equations back rather than to paraphrase them. Ask for an explicit AMBIGUOUS marker wherever the source is unclear, and resolve each ambiguity as a recorded decision rather than as a silent default.
   2. Convert every property of the specification into an executable assertion before writing any prose about it. An assertion with a known analytic answer catches what review does not.
   3. Pin every reported number to a generated artefact. The report generator should read results from disk and should fail visibly, not silently, when an artefact is absent.
-  4. Keep a prompt log. The log in AI_PROMPTS.md is the primary evidence for Sections 1, 3 and 5 of this report, and it also preserves the corrections, which are the most instructive part of it.
-  5. Verify identifiers and metadata of the literature independently. An agent can produce a well-formed arXiv identifier for a paper that does not exist, and a venue or a year that is wrong.
-  6. Build the offline path first. If the pipeline can be exercised end to end without a network, then a download failure is an inconvenience rather than a lost experiment.
-  7. Report inconclusive comparisons as inconclusive, and record which comparisons those are.
+  4. Audit the artefacts against the specification by listing them, not by re-running the scripts. A script that exits with status zero is not evidence that its output exists: the final audit of this project found a deliverable that the plan listed and that three scripts referred to, but which no script actually wrote.
+  5. Keep a prompt log. The log in AI_PROMPTS.md is the primary evidence for Sections 1, 3 and 5 of this report, and it also preserves the corrections, which are the most instructive part of it.
+  6. Verify identifiers and metadata of the literature independently. An agent can produce a well-formed arXiv identifier for a paper that does not exist, and a venue or a year that is wrong.
+  7. Build the offline path first. If the pipeline can be exercised end to end without a network, then a download failure is an inconvenience rather than a lost experiment.
+  8. Report inconclusive comparisons as inconclusive, and record which comparisons those are.
 
 5.5 Honest reflection on the premise of the assignment
 The assignment asks for the entire work to be done by an AI tool, and this report complies with that instruction. It is worth being explicit about what that compliance does and does not mean. It does not mean that the work is free of the student's responsibility: the algorithm choice, the resolution of the ambiguous conventions, the approval of the final document and the obligation to defend every claim in it remain the student's. It does not mean that the result is automatically correct; Section 5.2 is a catalogue of the ways in which it was not. And it does not mean that the report should be submitted without being read - a student who cannot answer a question about the orthogonality term in Section 2 has not met the standard of the assignment, regardless of how the document was produced.

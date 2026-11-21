@@ -152,6 +152,14 @@ python src/make_figures.py --out-dir results
 they keep running even when the shell that launched them is closed, and the raw
 stdout of every run is kept in `results/run_<dataset>.log`.
 
+`merge_results.py` also rebuilds the merged `results/summary.md`. If the per-dataset
+bundles are already merged and only the summary needs refreshing, use the lighter
+script, which touches neither `latents.npz` nor any other heavy artefact:
+
+```powershell
+python regen_summary.py
+```
+
 The project site carries the same numbers as the report; regenerate its results
 table from the metric file with:
 

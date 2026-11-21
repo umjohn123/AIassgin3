@@ -25,13 +25,14 @@ import sys
 from pathlib import Path
 from typing import Any, Dict, List
 
-_REPO_ROOT = Path(__file__).resolve().parents[1]
+_REPO_ROOT = Path(__file__).resolve().parent
 if str(_REPO_ROOT) not in sys.path:
     sys.path.insert(0, str(_REPO_ROOT))
 
 import numpy as np  # noqa: E402
 import pandas as pd  # noqa: E402
 
+from src.evaluate import METHODS, _write_summary  # noqa: E402
 from src.polca.utils import ensure_dir  # noqa: E402
 
 DATASETS = ("digits", "mnist", "fashion")
@@ -99,6 +100,28 @@ def merge(results_dir: str = "results", datasets=DATASETS) -> Dict[str, Any]:
     if losses:
         with (root / "loss_history.json").open("w", encoding="utf-8") as handle:
             json.dump(losses, handle, indent=2)
+
+    # The merged summary table is written with the very same helper that
+    # ``src/evaluate.py`` uses for the per-dataset files, so the root
+    # ``results/summary.md`` and the per-dataset ones cannot drift apart.
+    if frames:
+        merged_rows = merged.to_dict(orient="records")
+        merged_ablation = (
+            pd.concat(ablation_frames, ignore_index=True).to_dict(orient="records")
+            if ablation_frames
+            else []
+        )
+        _write_summary(
+            root / "summary.md",
+            merged_rows,
+            merged_ablation,
+            list(datasets),
+            list(METHODS),
+            notes=[
+                "This file aggregates the three datasets; the per-dataset "
+                "bundles under results/<dataset>/ carry the same numbers.",
+            ],
+        )
 
     print(f"merged metrics.csv rows: {len(frames) and sum(len(f) for f in frames)}")
     return {"datasets": list(datasets), "root": str(root)}

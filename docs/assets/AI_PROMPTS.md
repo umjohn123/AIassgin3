@@ -915,6 +915,57 @@ performance fix into a correctness fix.
 
 ---
 
+## Stage 10 — Final delivery audit
+
+### Prompt 10.1 (audit the deliverables against the plan)
+
+The agent was asked to walk the plan's delivery checklist item by item and to verify,
+rather than assume, that each artefact exists and is internally consistent: the
+directory tree in the plan, the experiment matrix (3 datasets x 5 methods x 3 seeds x
+4 classifiers), the ablation variants, the eight figures, the six report sections and
+the live Pages URLs.
+
+### AI response (summary)
+
+The audit found **one real gap and one latent fragility**.
+
+**The gap.** The plan lists `results/summary.md` as a deliverable and both
+`src/evaluate.py` and `merge_results.py` refer to it, but the file did not exist at
+the root of `results/`. The cause was a defect in `merge_results.py`: it read the
+per-dataset `summary.md` files into memory but never wrote the merged one, so the
+per-dataset bundles had their summary and the root bundle did not. The report builder
+reads `results/summary.md` when it is present and silently falls back when it is not,
+which is why the defect was invisible in the document itself — but the published
+repository tree in Section 3.3 did not list the file that the plan promised.
+
+The fix was to have `merge_results.py` call the *same* `_write_summary` helper that
+`src/evaluate.py` uses, so the merged table and the per-dataset tables cannot drift
+apart. `regen_summary.py` was added as a light-weight way to rebuild only that file
+from the already-merged CSVs, without touching the 1.5 GB `latents.npz`.
+
+**The fragility.** Rebuilding the report after a PDF export failed with a bare
+`PermissionError` on the `.docx`: the Word COM automation used for the PDF export had
+not yet released the file lock. The rebuild script has no retry, so the whole report
+build was lost to a transient condition that has nothing to do with the report's
+content. `build_report.py` now saves through a temporary file in the same directory and
+retries on `PermissionError`, which makes the report -> PDF -> report cycle
+deterministic.
+
+Both defects share a single root cause and a single lesson: **the agent had written
+the code from the plan and had verified that each script ran, but had never checked
+that the artefacts the plan promised were actually produced on disk.** A script that
+exits with status 0 is not evidence that its output exists. The audit was therefore
+done by listing the files, reading them, and comparing their contents against the
+plan, not by re-running the pipeline.
+
+The audit also re-validated the finished deliverables: 180 metric rows
+(3 datasets x 5 methods x 3 seeds x 4 classifiers), 12 ablation rows, 8 figures, a
+44-page PDF starting with `%PDF`, a `.docx` with 536 paragraphs and 10 tables
+containing all six required sections and the live repository and Pages URLs, a site
+whose twelve assets all return HTTP 200, and a test suite of 12 passing tests.
+
+---
+
 ## Appendix A — Where each prompt landed in the report
 
 | Stage | Report section | Artefact produced |
@@ -929,6 +980,7 @@ performance fix into a correctness fix.
 | 7 | 4, 6 | `report/build_report.py`, `.docx`, `.pdf` |
 | 8 | 5 | Limitations text |
 | 9 | 3, 4, 5 | Corrected `src/metrics.py`, `src/evaluate.py`, `tests/test_pipeline.py` |
+| 10 | 3, 4, 6 | Corrected `merge_results.py`, hardened `report/build_report.py`, `results/summary.md` |
 | — | 6 | `docs/index.html` (this repository's project page) |
 
 ## Appendix B — Prompt statistics
@@ -945,7 +997,8 @@ performance fix into a correctness fix.
 | 7 | 1 | 1 | — |
 | 8 | 1 | 0 | — |
 | 9 | 2 | 1 | 2 (silent SSIM misuse, OOM) |
-| **Total** | **26** | **8** | **7** |
+| 10 | 1 | 0 | 2 (missing merged summary, report save lock) |
+| **Total** | **27** | **8** | **9** |
 
 ---
 

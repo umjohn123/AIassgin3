@@ -781,6 +781,54 @@ def extract_block(path: Path, start_marker: str, end_marker: str) -> str:
     return source[i:j].rstrip()
 
 
+def _save_document(doc, out_path: Path, attempts: int = 5, delay: float = 1.5) -> None:
+    """Save the document, retrying while the file is locked by another process.
+
+    On Windows the ``.docx`` can briefly stay locked after a Word COM
+    automation run (``report/docx_to_pdf.py``) or after the user has the
+    report open in Word.  python-docx then fails with a bare
+    ``PermissionError`` and the whole rebuild is lost.  Writing to a
+    temporary file in the same directory and then replacing the target
+    keeps the build deterministic, and the retry loop covers the case where
+    the target itself is locked.
+    """
+    import shutil
+    import tempfile
+    import time
+
+    out_path = Path(out_path)
+    last_exc = None
+    for attempt in range(attempts):
+        try:
+            # Save to a sibling temporary file first: this succeeds even when
+            # the destination is locked, and the replace is then atomic-ish.
+            handle, tmp_name = tempfile.mkstemp(
+                prefix=".report_", suffix=".docx", dir=str(out_path.parent)
+            )
+            os.close(handle)
+            tmp_path = Path(tmp_name)
+            try:
+                doc.save(str(tmp_path))
+                shutil.move(str(tmp_path), str(out_path))
+            finally:
+                if tmp_path.exists():
+                    try:
+                        tmp_path.unlink()
+                    except OSError:
+                        pass
+            return
+        except PermissionError as exc:
+            last_exc = exc
+            if attempt < attempts - 1:
+                print(
+                    f"  ! the report file is locked (attempt {attempt + 1}/{attempts}); "
+                    f"retrying in {delay:.1f}s"
+                )
+                time.sleep(delay)
+                continue
+    raise last_exc
+
+
 def build_tree_text(repo_root: Path) -> None:
     """Build a directory tree of the repository (excluding heavy artefacts)."""
     skip_dirs = {"__pycache__", ".git", "data", ".venv", "venv", "node_modules", ".idea"}
@@ -2169,6 +2217,11 @@ def build_report(results_dir: Path, figures_dir: Path, out_path: Path,
         "Pin every reported number to a generated artefact. The report generator "
         "should read results from disk and should fail visibly, not silently, "
         "when an artefact is absent.",
+        "Audit the artefacts against the specification by listing them, not by "
+        "re-running the scripts. A script that exits with status zero is not "
+        "evidence that its output exists: the final audit of this project found "
+        "a deliverable that the plan listed and that three scripts referred to, "
+        "but which no script actually wrote.",
         "Keep a prompt log. The log in AI_PROMPTS.md is the primary evidence for "
         "Sections 1, 3 and 5 of this report, and it also preserves the "
         "corrections, which are the most instructive part of it.",
@@ -2426,7 +2479,7 @@ def build_report(results_dir: Path, figures_dir: Path, out_path: Path,
     # ===================================================================== #
     out_path = Path(out_path)
     out_path.parent.mkdir(parents=True, exist_ok=True)
-    doc.save(str(out_path))
+    _save_document(doc, out_path)
 
     # Plain-text / markdown dump of the same content
     md_path = out_path.with_name("report_text.md")

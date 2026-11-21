@@ -1,0 +1,20 @@
+Fix the missing merged summary and harden the report save
+
+The final audit against the plan found that results/summary.md was listed as a
+deliverable and referred to by src/evaluate.py, merge_results.py and the
+report, but no script actually wrote it: merge_results.py read the
+per-dataset summary files and then dropped them. The report builder fell
+back silently when the file was absent, so the defect was invisible in the
+document itself.
+
+merge_results.py now calls the same _write_summary helper that
+src/evaluate.py uses, so the merged and per-dataset tables cannot drift
+apart. regen_summary.py rebuilds only that file from the already-merged
+CSVs, without touching the 1.5 GB latents.npz.
+
+The report rebuild after a PDF export also failed with a bare
+PermissionError on the .docx, because the Word COM automation had not yet
+released the file lock, losing the whole build to a transient condition.
+build_report.py now saves through a temporary file in the same directory
+and retries on PermissionError, which makes the report -> PDF -> report
+cycle deterministic.
