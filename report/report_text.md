@@ -256,7 +256,6 @@ AIassgin3/
 |-- AI_PROMPTS.md
 |-- b.txt
 |-- merge_results.py
-|-- pt.txt
 |-- README.md
 |-- regen_summary.py
 |-- requirements.txt
@@ -665,7 +664,7 @@ The repository itself is at https://github.com/umjohn123/AIassgin3. The publishe
 The steps below produce the URL that appears at the beginning of this section. They are listed so that the publication can be reproduced exactly, and so that the placeholder in the previous subsection can be resolved without ambiguity.
   1. Create the repository on GitHub and push the working copy: git init, git add ., git commit -m "AI Assignment 3: POLCA Net", then git branch -M main, git remote add origin https://github.com/<owner>/<repo>.git and git push -u origin main.
   2. Enable GitHub Pages for the repository: open Settings > Pages, set Source to "Deploy from a branch", choose the branch main and the /docs folder, and save. The site is then published at https://<owner>.github.io/<repo>/.
-  3. Record the final values in report/site_config.json as {"owner": "<owner>", "repo": "<repo>", "repo_url": "https://github.com/<owner>/<repo>", "pages_url": "https://<owner>.github.io/<repo>/"}. The same file carries the "author" and "supervisor" fields, which are rendered on the title page, in Section 6.1 and in the header and the footer of the published site, so the student identity is written in one place only.
+  3. Record the final values in report/site_config.json as {"owner": "<owner>", "repo": "<repo>", "repo_url": "https://github.com/<owner>/<repo>", "pages_url": "https://<owner>.github.io/<repo>/"}. The same file carries the "author" field, which is rendered on the title page, in Section 6.1 and in the header and the footer of the published site, so the student identity is written in one place only.
   4. Rebuild the report so that Section 6 carries the real link: python report/build_report.py, followed by python report/docx_to_pdf.py to regenerate the PDF.
 
 6.3 Layout of the published code

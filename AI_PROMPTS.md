@@ -993,9 +993,9 @@ three further places - the header and the footer of the published site, the
 README, and the attribution line of Section 6.1 - and writing them by hand would
 have made it possible for the four copies to disagree.
 
-The fix was to make the identity a **single source of truth**. The `author` and
-`supervisor` keys were added to `report/site_config.json`, which the report
-builder already read for the repository and Pages URLs, and:
+The fix was to make the identity a **single source of truth**. The `author` key was
+added to `report/site_config.json`, which the report builder already read for the
+repository and Pages URLs, and:
 
 - `report/build_report.py` renders the name on the title page, in the Section 6.1
   attribution line and in the markdown dump, all from that one key;

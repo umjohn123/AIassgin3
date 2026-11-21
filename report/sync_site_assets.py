@@ -50,9 +50,9 @@ LINK_REWRITES = (
     (r"\.\./AI_PROMPTS\.md", "assets/AI_PROMPTS.md"),
 )
 
-#: Placeholders in the site that carry the author and the supervisor.  They
-#: are filled from ``report/site_config.json`` so that the page, the report
-#: title page and the configuration file can never disagree.
+#: Placeholders in the site that carry the author.  They are filled from
+#: ``report/site_config.json`` so that the page, the report title page and the
+#: configuration file can never disagree.
 AUTHOR_PATTERNS = (
     r"&lt;Student Name / Matric No\.&gt;",
     r"<Student Name / Matric No\.>",
@@ -60,7 +60,7 @@ AUTHOR_PATTERNS = (
 
 
 def apply_site_metadata(site_path: Path, repo_root: Path) -> bool:
-    """Write the author and the supervisor into the site from the config."""
+    """Write the author into the site from the config."""
     config_path = repo_root / "report" / "site_config.json"
     if not config_path.exists():
         return False
@@ -70,7 +70,6 @@ def apply_site_metadata(site_path: Path, repo_root: Path) -> bool:
         return False
 
     author = str(config.get("author") or "").strip()
-    supervisor = str(config.get("supervisor") or "").strip()
     if not author:
         return False
 
@@ -78,8 +77,6 @@ def apply_site_metadata(site_path: Path, repo_root: Path) -> bool:
     original = html
     for pattern in AUTHOR_PATTERNS:
         html = re.sub(pattern, author, html)
-    if supervisor and not supervisor.startswith("<"):
-        html = re.sub(r"Supervisor: &lt;[^&]*&gt;", f"Supervisor: {supervisor}", html)
     if html == original:
         return False
     site_path.write_text(html, encoding="utf-8")
@@ -142,9 +139,9 @@ def main(argv=None) -> int:
     else:
         print("  the links in the site were already up to date")
     if apply_site_metadata(site, repo_root):
-        print(f"  wrote the author and the supervisor into {site}")
+        print(f"  wrote the author into {site}")
     else:
-        print("  the author and the supervisor in the site were already up to date")
+        print("  the author in the site was already up to date")
     return 0
 
 

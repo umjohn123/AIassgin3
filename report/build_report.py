@@ -900,11 +900,10 @@ def build_report(results_dir: Path, figures_dir: Path, out_path: Path,
     res = load_results(results_dir)
     site = load_site_config(site_config_path)
 
-    # The author and the supervisor live in ``report/site_config.json`` so that
-    # the title page, the markdown dump and the published site all show the
-    # same values; the module-level constant is only a fallback.
+    # The author lives in ``report/site_config.json`` so that the title page,
+    # the markdown dump and the published site all show the same value; the
+    # module-level constant is only a fallback.
     author = str(site.get("author") or "").strip() or REPORT_AUTHOR
-    supervisor = str(site.get("supervisor") or "").strip()
 
     doc = Document()
     configure_document(doc)
@@ -2309,8 +2308,6 @@ def build_report(results_dir: Path, figures_dir: Path, out_path: Path,
         "assignment's sixth section."
     )
     attribution = f"Submitted by {author}"
-    if supervisor and not supervisor.startswith("<"):
-        attribution += f", supervised by {supervisor}"
     p = w.doc.add_paragraph()
     p.alignment = WD_ALIGN_PARAGRAPH.CENTER
     run = p.add_run(attribution)
@@ -2372,9 +2369,9 @@ def build_report(results_dir: Path, figures_dir: Path, out_path: Path,
         "{\"owner\": \"<owner>\", \"repo\": \"<repo>\", \"repo_url\": "
         "\"https://github.com/<owner>/<repo>\", \"pages_url\": "
         "\"https://<owner>.github.io/<repo>/\"}. The same file carries the "
-        "\"author\" and \"supervisor\" fields, which are rendered on the title "
-        "page, in Section 6.1 and in the header and the footer of the published "
-        "site, so the student identity is written in one place only.",
+        "\"author\" field, which is rendered on the title page, in Section 6.1 "
+        "and in the header and the footer of the published site, so the "
+        "student identity is written in one place only.",
         "Rebuild the report so that Section 6 carries the real link: "
         "python report/build_report.py, followed by python report/docx_to_pdf.py "
         "to regenerate the PDF.",

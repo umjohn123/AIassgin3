@@ -63,6 +63,22 @@ for rel in [
 ]:
     check(rel, (root / rel).exists())
 
+print("\n== No leftover placeholders ==")
+# The assignment only asks for the student's name and matric number.  A
+# supervisor placeholder would be an unfilled field in the submitted
+# document, so none may survive anywhere.
+for rel in [
+    "report/report_text.md",
+    "docs/index.html",
+    "AI_PROMPTS.md",
+    "report/site_config.json",
+    "report/build_report.py",
+    "report/sync_site_assets.py",
+]:
+    text = (root / rel).read_text(encoding="utf-8")
+    check(f"no supervisor placeholder in {rel}", "Lecturer Name" not in text)
+    check(f"no supervisor key in {rel}", '"supervisor"' not in text)
+
 print("\n== Figures (plan lists 8) ==")
 figs = sorted((root / "results" / "figures").glob("*.png"))
 check("8 figures", len(figs) == 8, f"{len(figs)} found")
