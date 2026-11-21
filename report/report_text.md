@@ -1,7 +1,8 @@
 # Extending PCA and LDA to Non-Linear Domains with POLCA Net
 
 *AI Assignment #3 - CISC3024 Pattern Recognition*  
-*November 2026*
+*November 2026*  
+*CHAOWENJIE UC325315*
 
 **AI Assistance Disclosure.** This report was produced with the assistance of an AI coding agent. The entire assignment - the literature search that identified the algorithm, the design and implementation of the software, the execution of the experiments, the generation of the figures and tables, and the writing of this document - was carried out by the AI agent, in accordance with the explicit instruction of the assignment brief that the student is not permitted to write code by hand and that the search, the programming and the report writing are to be delegated to an AI tool. The human student's role was limited to reading the brief, approving the algorithm choice, executing the commands that the agent produced, and checking the outputs against the source paper. Every quantitative claim in this report is generated from artefacts on disk by the script that assembles this document, and the full prompt log is kept in AI_PROMPTS.md at the root of the repository.
 
@@ -162,6 +163,9 @@ The generation prompts were deliberately narrow. Each prompt named a single file
 The repository produced by the agent has the following layout. The complete tree, as generated from the working copy at report-build time, is reproduced in the monospace block below.
 ```
 AIassgin3/
+|-- .cursor/
+|   `-- plans/
+|       `-- polca-net_ai_assignment_3_8ee7298e.plan.md
 |-- .pytest_cache/
 |   |-- v/
 |   |   `-- cache/
@@ -174,7 +178,7 @@ AIassgin3/
 |   |   |-- figures/
 |   |   |-- report/
 |   |   |   |-- AI_Assignment3_Report.docx  (1183 KB, omitted)
-|   |   |   `-- AI_Assignment3_Report.pdf  (1535 KB, omitted)
+|   |   |   `-- AI_Assignment3_Report.pdf  (1538 KB, omitted)
 |   |   `-- AI_PROMPTS.md
 |   |-- .gitkeep
 |   |-- index.html
@@ -186,7 +190,7 @@ AIassgin3/
 |   |-- figures/
 |   |-- .gitkeep
 |   |-- AI_Assignment3_Report.docx  (1183 KB, omitted)
-|   |-- AI_Assignment3_Report.pdf  (1535 KB, omitted)
+|   |-- AI_Assignment3_Report.pdf  (1538 KB, omitted)
 |   |-- build_report.py
 |   |-- docx_to_pdf.py
 |   |-- report_text.md
@@ -252,6 +256,7 @@ AIassgin3/
 |-- AI_PROMPTS.md
 |-- b.txt
 |-- merge_results.py
+|-- pt.txt
 |-- README.md
 |-- regen_summary.py
 |-- requirements.txt
@@ -651,6 +656,8 @@ One practical point deserves mention because it is often mis-stated. The univers
 6.1 Link to the source code
 The complete source code of this project - the implementation of POLCA Net, the baselines, the evaluation harness, the figure scripts, the verification suite, the experiment configuration and the prompt log - is published as a GitHub repository and rendered as a GitHub Pages project site. The project page is the primary deliverable required by the assignment's sixth section.
 
+Submitted by CHAOWENJIE UC325315
+
 Project page: https://umjohn123.github.io/AIassgin3/
 The repository itself is at https://github.com/umjohn123/AIassgin3. The published site contains the project description, the repository tree, the key source files with syntax highlighting, the result tables and the report figures, and a link to the PDF version of this report.
 
@@ -658,7 +665,7 @@ The repository itself is at https://github.com/umjohn123/AIassgin3. The publishe
 The steps below produce the URL that appears at the beginning of this section. They are listed so that the publication can be reproduced exactly, and so that the placeholder in the previous subsection can be resolved without ambiguity.
   1. Create the repository on GitHub and push the working copy: git init, git add ., git commit -m "AI Assignment 3: POLCA Net", then git branch -M main, git remote add origin https://github.com/<owner>/<repo>.git and git push -u origin main.
   2. Enable GitHub Pages for the repository: open Settings > Pages, set Source to "Deploy from a branch", choose the branch main and the /docs folder, and save. The site is then published at https://<owner>.github.io/<repo>/.
-  3. Record the final values in report/site_config.json as {"owner": "<owner>", "repo": "<repo>", "repo_url": "https://github.com/<owner>/<repo>", "pages_url": "https://<owner>.github.io/<repo>/"}.
+  3. Record the final values in report/site_config.json as {"owner": "<owner>", "repo": "<repo>", "repo_url": "https://github.com/<owner>/<repo>", "pages_url": "https://<owner>.github.io/<repo>/"}. The same file carries the "author" and "supervisor" fields, which are rendered on the title page, in Section 6.1 and in the header and the footer of the published site, so the student identity is written in one place only.
   4. Rebuild the report so that Section 6 carries the real link: python report/build_report.py, followed by python report/docx_to_pdf.py to regenerate the PDF.
 
 6.3 Layout of the published code

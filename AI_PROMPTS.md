@@ -975,6 +975,43 @@ exits with status zero is not evidence that its output exists.
 
 ---
 
+## Stage 11 — Adding the student identity
+
+### Prompt 11.1 (add the author name and matric number)
+
+The student had already typed the name `CHAOWENJIE UC325315` directly into the
+generated `.docx`, on the title page between the date and the AI disclosure
+paragraph. The agent was asked to make that change permanent.
+
+### AI response (summary)
+
+Typing into the generated document was the wrong place to put the change, and
+the agent said so rather than simply agreeing. The `.docx` is an **output** of
+`report/build_report.py`: the next rebuild of the report would have overwritten
+the paragraph and silently dropped the name. The same name also had to reach
+three further places - the header and the footer of the published site, the
+README, and the attribution line of Section 6.1 - and writing them by hand would
+have made it possible for the four copies to disagree.
+
+The fix was to make the identity a **single source of truth**. The `author` and
+`supervisor` keys were added to `report/site_config.json`, which the report
+builder already read for the repository and Pages URLs, and:
+
+- `report/build_report.py` renders the name on the title page, in the Section 6.1
+  attribution line and in the markdown dump, all from that one key;
+- `report/sync_site_assets.py` writes the name into the header and the footer
+  of `docs/index.html` from the same key, replacing the placeholder;
+- `tests/final_audit.py` gained checks that the author appears on the title
+  page, in the site and in the markdown dump, and that no `Student Name`
+  placeholder survives anywhere.
+
+The audit checks matter more than the substitution itself. A name typed into a
+generated file is fragile in a way that a name read from a configuration file is
+not, and the audit is what makes the difference visible on the next rebuild
+rather than at the moment of submission.
+
+---
+
 ## Appendix A — Where each prompt landed in the report
 
 | Stage | Report section | Artefact produced |
@@ -990,6 +1027,7 @@ exits with status zero is not evidence that its output exists.
 | 8 | 5 | Limitations text |
 | 9 | 3, 4, 5 | Corrected `src/metrics.py`, `src/evaluate.py`, `tests/test_pipeline.py` |
 | 10 | 3, 4, 6 | Corrected `merge_results.py`, hardened `report/build_report.py`, `results/summary.md` |
+| 11 | 6 | Author identity read from `report/site_config.json` into the title page, Section 6.1 and the site |
 | — | 6 | `docs/index.html` (this repository's project page) |
 
 ## Appendix B — Prompt statistics
@@ -1007,7 +1045,8 @@ exits with status zero is not evidence that its output exists.
 | 8 | 1 | 0 | — |
 | 9 | 2 | 1 | 2 (silent SSIM misuse, OOM) |
 | 10 | 1 | 0 | 2 (missing merged summary, report save lock) |
-| **Total** | **27** | **8** | **9** |
+| 11 | 1 | 0 | 1 (name typed into a generated file rather than its source) |
+| **Total** | **28** | **8** | **10** |
 
 ---
 

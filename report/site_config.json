@@ -5,5 +5,7 @@
   "pages_url": "https://umjohn123.github.io/AIassgin3/",
   "clone_url": "https://github.com/umjohn123/AIassgin3.git",
   "pages_source": "main / docs",
-  "note": "Fill in the correct owner/repository if the GitHub account differs; the report builder reads these keys to render Section 6."
+  "author": "CHAOWENJIE UC325315",
+  "supervisor": "<Lecturer Name>",
+  "note": "The author and supervisor fields are read by report/build_report.py (title page) and report/sync_site_assets.py (site header and footer), so they are set in exactly one place. Fill in the correct owner/repository if the GitHub account differs."
 }

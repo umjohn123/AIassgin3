@@ -24,6 +24,7 @@ Usage::
 from __future__ import annotations
 
 import argparse
+import json
 import re
 import shutil
 import sys
@@ -48,6 +49,41 @@ LINK_REWRITES = (
     (r"\.\./report/", "assets/report/"),
     (r"\.\./AI_PROMPTS\.md", "assets/AI_PROMPTS.md"),
 )
+
+#: Placeholders in the site that carry the author and the supervisor.  They
+#: are filled from ``report/site_config.json`` so that the page, the report
+#: title page and the configuration file can never disagree.
+AUTHOR_PATTERNS = (
+    r"&lt;Student Name / Matric No\.&gt;",
+    r"<Student Name / Matric No\.>",
+)
+
+
+def apply_site_metadata(site_path: Path, repo_root: Path) -> bool:
+    """Write the author and the supervisor into the site from the config."""
+    config_path = repo_root / "report" / "site_config.json"
+    if not config_path.exists():
+        return False
+    try:
+        config = json.loads(config_path.read_text(encoding="utf-8"))
+    except (OSError, ValueError):
+        return False
+
+    author = str(config.get("author") or "").strip()
+    supervisor = str(config.get("supervisor") or "").strip()
+    if not author:
+        return False
+
+    html = site_path.read_text(encoding="utf-8")
+    original = html
+    for pattern in AUTHOR_PATTERNS:
+        html = re.sub(pattern, author, html)
+    if supervisor and not supervisor.startswith("<"):
+        html = re.sub(r"Supervisor: &lt;[^&]*&gt;", f"Supervisor: {supervisor}", html)
+    if html == original:
+        return False
+    site_path.write_text(html, encoding="utf-8")
+    return True
 
 
 def copy_assets(repo_root: Path) -> List[str]:
@@ -105,6 +141,10 @@ def main(argv=None) -> int:
         print(f"  rewrote the links in {site}")
     else:
         print("  the links in the site were already up to date")
+    if apply_site_metadata(site, repo_root):
+        print(f"  wrote the author and the supervisor into {site}")
+    else:
+        print("  the author and the supervisor in the site were already up to date")
     return 0
 
 

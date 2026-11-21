@@ -1,5 +1,7 @@
 # POLCA-Net — CISC3024 Pattern Recognition, AI Assignment #3
 
+**Author:** CHAOWENJIE UC325315
+
 A from-scratch implementation of **POLCA Net — Principal Orthogonal Latent Components
 Analysis** (arXiv:2410.07289, 2024), an autoencoder that explicitly *mimics and extends
 the capabilities of PCA and LDA to non-linear domains* by constraining the latent space

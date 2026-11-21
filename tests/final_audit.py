@@ -95,6 +95,24 @@ pdf = (root / "report" / "AI_Assignment3_Report.pdf").read_bytes()
 check("pdf header", pdf[:5] == b"%PDF-")
 check("pdf size > 1MB", len(pdf) > 1024 * 1024, f"{len(pdf)//1024} KB")
 
+print("\n== Author attribution ==")
+import json
+config = json.loads((root / "report" / "site_config.json").read_text(encoding="utf-8"))
+author = str(config.get("author") or "").strip()
+site_html = (root / "docs" / "index.html").read_text(encoding="utf-8")
+check("author in site_config.json", bool(author), author)
+check(
+    "no author placeholder left",
+    "Student Name" not in blob and "Student Name" not in site_html,
+)
+if author:
+    check("author on the report title page", author in blob)
+    check("author in the site header", author in site_html)
+    check(
+        "author in the markdown dump",
+        author in (root / "report" / "report_text.md").read_text(encoding="utf-8"),
+    )
+
 print("\n== Site ==")
 html = (root / "docs" / "index.html").read_text(encoding="utf-8")
 body = re.search(r"BEGIN RESULTS TABLE(.*?)END RESULTS TABLE", html, re.S).group(1)

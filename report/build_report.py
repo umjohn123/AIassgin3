@@ -62,6 +62,8 @@ TABLE_SIZE = Pt(10)
 REPORT_TITLE = "Extending PCA and LDA to Non-Linear Domains with POLCA Net"
 REPORT_SUBTITLE = "AI Assignment #3 - CISC3024 Pattern Recognition"
 REPORT_DATE = "November 2026"
+#: Fallback used when ``report/site_config.json`` does not carry an author.
+REPORT_AUTHOR = "CHAOWENJIE UC325315"
 HEADER_TITLE = "CISC3024 AI Assignment #3 - POLCA Net"
 
 SECTION_TITLES = [
@@ -898,6 +900,12 @@ def build_report(results_dir: Path, figures_dir: Path, out_path: Path,
     res = load_results(results_dir)
     site = load_site_config(site_config_path)
 
+    # The author and the supervisor live in ``report/site_config.json`` so that
+    # the title page, the markdown dump and the published site all show the
+    # same values; the module-level constant is only a fallback.
+    author = str(site.get("author") or "").strip() or REPORT_AUTHOR
+    supervisor = str(site.get("supervisor") or "").strip()
+
     doc = Document()
     configure_document(doc)
     w = ReportWriter(doc)
@@ -934,6 +942,12 @@ def build_report(results_dir: Path, figures_dir: Path, out_path: Path,
     p.alignment = WD_ALIGN_PARAGRAPH.CENTER
     p.paragraph_format.space_before = Pt(6)
     run = p.add_run(REPORT_DATE)
+    _set_run_font(run, BODY_FONT, Pt(12))
+
+    p = w.doc.add_paragraph()
+    p.alignment = WD_ALIGN_PARAGRAPH.CENTER
+    p.paragraph_format.space_before = Pt(6)
+    run = p.add_run(author)
     _set_run_font(run, BODY_FONT, Pt(12))
 
     for _ in range(2):
@@ -2294,6 +2308,16 @@ def build_report(results_dir: Path, figures_dir: Path, out_path: Path,
         "site. The project page is the primary deliverable required by the "
         "assignment's sixth section."
     )
+    attribution = f"Submitted by {author}"
+    if supervisor and not supervisor.startswith("<"):
+        attribution += f", supervised by {supervisor}"
+    p = w.doc.add_paragraph()
+    p.alignment = WD_ALIGN_PARAGRAPH.CENTER
+    run = p.add_run(attribution)
+    _set_run_font(run, BODY_FONT, Pt(11), italic=True)
+    w.text_log.append("")
+    w.text_log.append(attribution)
+
     p = w.doc.add_paragraph()
     p.alignment = WD_ALIGN_PARAGRAPH.CENTER
     run = p.add_run(pages_url)
@@ -2347,7 +2371,10 @@ def build_report(results_dir: Path, figures_dir: Path, out_path: Path,
         "Record the final values in report/site_config.json as "
         "{\"owner\": \"<owner>\", \"repo\": \"<repo>\", \"repo_url\": "
         "\"https://github.com/<owner>/<repo>\", \"pages_url\": "
-        "\"https://<owner>.github.io/<repo>/\"}.",
+        "\"https://<owner>.github.io/<repo>/\"}. The same file carries the "
+        "\"author\" and \"supervisor\" fields, which are rendered on the title "
+        "page, in Section 6.1 and in the header and the footer of the published "
+        "site, so the student identity is written in one place only.",
         "Rebuild the report so that Section 6 carries the real link: "
         "python report/build_report.py, followed by python report/docx_to_pdf.py "
         "to regenerate the PDF.",
@@ -2493,7 +2520,8 @@ def build_report(results_dir: Path, figures_dir: Path, out_path: Path,
         f"# {REPORT_TITLE}",
         "",
         f"*{REPORT_SUBTITLE}*  ",
-        f"*{REPORT_DATE}*",
+        f"*{REPORT_DATE}*  ",
+        f"*{author}*",
         "",
         "**AI Assistance Disclosure.** " + disclosure,
         "",
