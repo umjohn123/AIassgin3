@@ -186,6 +186,7 @@
       <a href="#results">Results</a>
       <a href="#report">Report</a>
       <a href="#ai">AI workflow</a>
+      <a href="https://github.com/umjohn123/AIassgin3">Repository</a>
     </nav>
   </div>
 </header>
@@ -299,13 +300,17 @@
 │   ├── <span class="fn">evaluate.py</span>             <span class="com"># 4 linear classifiers, Accuracy / F1</span>
 │   └── <span class="fn">make_figures.py</span>         <span class="com"># all plots</span>
 ├── tests/
-│   └── <span class="fn">smoke_test.py</span>           <span class="com"># shape, orthogonality and ordering assertions</span>
+│   ├── <span class="fn">smoke_test.py</span>           <span class="com"># shape, orthogonality and ordering assertions</span>
+│   ├── <span class="fn">test_pipeline.py</span>        <span class="com"># end-to-end evaluation and figure generation</span>
+│   └── <span class="fn">final_audit.py</span>          <span class="com"># checks every deliverable of the plan is on disk</span>
 ├── results/
 │   ├── <span class="fn">metrics.csv</span>              <span class="com"># tidy per (dataset, method) metrics</span>
 │   ├── <span class="fn">summary.json</span>            <span class="com"># aggregate statistics</span>
+│   ├── <span class="fn">ablation.csv</span>            <span class="com"># one-term-removed ablation</span>
 │   └── figures/                  <span class="com"># *.png rendered by make_figures.py</span>
 ├── report/
 │   ├── <span class="fn">build_report.py</span>         <span class="com"># python-docx generator for the 6-section report</span>
+│   ├── <span class="fn">math_render.py</span>          <span class="com"># LaTeX subset to native Word equations</span>
 │   ├── AI_Assignment3_Report.docx
 │   └── AI_Assignment3_Report.pdf
 ├── docs/
@@ -313,6 +318,7 @@
 │   └── README.md
 ├── <span class="fn">AI_PROMPTS.md</span>                <span class="com"># full prompt log for the whole assignment</span>
 ├── <span class="fn">README.md</span>
+├── <span class="fn">LICENSE</span>                      <span class="com"># MIT</span>
 ├── <span class="fn">requirements.txt</span>
 └── <span class="fn">.gitignore</span></code></pre>
   </section>
@@ -698,7 +704,7 @@ _EPS: float = 1e-12
       Analysis (POLCA Net)</em>, arXiv:2410.07289, 2024.
     </p>
     <p>
-      Licence: <span class="mono">MIT</span> &mdash; placeholder, to be confirmed.
+      Licence: <span class="mono">MIT</span> &mdash; copyright &copy; 2026 CHAOWENJIE UC325315.
       &middot; This page is self-contained and renders fully offline.
     </p>
   </div>

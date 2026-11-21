@@ -15,7 +15,7 @@ Assignment #3 (POLCA-Net)**.
 GitHub Pages publishes **only** the selected folder — here `docs/` — as the site
 root. A page inside `docs/` therefore cannot link to `../results/figures/...` or
 `../report/...`: those paths do not exist on the published site, and the links
-would fall back to the raw repository files on `github.com/<user>/<repo>` (or
+would fall back to the raw repository files on `github.com/umjohn123/AIassgin3` (or
 break entirely).
 
 `report/sync_site_assets.py` therefore mirrors every referenced asset into
@@ -49,17 +49,31 @@ git push origin main
 1. Open the repository on GitHub and go to **Settings**.
 2. In the left sidebar choose **Pages**.
 3. Under **Build and deployment**, set **Source** to **Deploy from a branch**.
-4. Under **Branch**, pick **`main`** and the folder **`/docs`** (GitHub shows it as
-   `/ (root)` on some account layouts when no other site exists — if that is what your
-   dropdown shows, choose it and GitHub will use the `docs/` folder automatically).
+4. Under **Branch**, pick the entry that reads **`main /docs`**. The branch and the
+   folder are combined into a single dropdown in the current GitHub interface, and the
+   `/docs` suffix is what makes this folder the root of the published site.
+
+   > **Do not pick `main / (root)`.** That publishes the *repository root*, and GitHub
+   > then renders the root `README.md` as the landing page instead of this site. The
+   > project page would only be reachable at `/docs/`, and a link to the `docs/assets/`
+   > folder would return a 404 because no directory index is generated for it.
+
 5. Click **Save**.
+
+### Step 2b — if the dropdown offers no `/docs` entry
+
+The site is published either way. The repository root carries a small redirect page
+(`index.html`) that sends the visitor to `docs/`, and both the root and `docs/` carry a
+`.nojekyll` marker, which tells GitHub Pages to serve the files as they are instead of
+running them through Jekyll. With Jekyll disabled the files are published verbatim,
+which is what this self-contained page needs.
 
 ### Step 3 — wait and open the site
 
 The first build takes up to a minute. The site then appears at:
 
 ```
-https://<your-github-username>.github.io/<repository-name>/
+https://umjohn123.github.io/AIassgin3/
 ```
 
 GitHub also shows a green **"Visit site"** link on the same Settings → Pages page as

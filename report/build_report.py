@@ -30,6 +30,7 @@ import json
 import math
 import os
 import re
+import subprocess
 import sys
 from pathlib import Path
 from typing import Any, Dict, Iterable, List, Optional, Sequence, Tuple
@@ -963,9 +964,40 @@ def _save_document(doc, out_path: Path, attempts: int = 5, delay: float = 1.5) -
     raise last_exc
 
 
-def build_tree_text(repo_root: Path) -> None:
-    """Build a directory tree of the repository (excluding heavy artefacts)."""
-    skip_dirs = {"__pycache__", ".git", "data", ".venv", "venv", "node_modules", ".idea"}
+def _tracked_files(repo_root: Path) -> Optional[List[str]]:
+    """The paths git tracks, relative to the repository root.
+
+    The tree in the report must describe the repository as it is *published*.
+    Walking the working directory instead would list the editor's scratch
+    files, the pytest cache and the downloaded datasets, none of which are
+    part of the deliverable and several of which would look like debris in a
+    submitted report.  Git is asked what is tracked, so the tree always
+    matches what a reader would find in the repository.
+    """
+    try:
+        result = subprocess.run(
+            ["git", "-C", str(repo_root), "ls-files"],
+            capture_output=True, text=True, check=False,
+        )
+    except (OSError, ValueError):
+        return None
+    if result.returncode != 0:
+        return None
+    files = [line.strip() for line in result.stdout.splitlines() if line.strip()]
+    return files or None
+
+
+def build_tree_text(repo_root: Path) -> str:
+    """Build a directory tree of the repository (excluding heavy artefacts).
+
+    The tree is built from the files git tracks, so it shows the repository
+    as it is published rather than as it happens to sit on the author's
+    machine.  A directory that holds nothing but generated output is
+    collapsed, and a file too large to be worth listing in full is marked as
+    omitted.
+    """
+    # Directories whose contents are generated output rather than source.
+    collapsed_dirs = {"figures", "raw"}
     # Scratch files produced while the assignment was being carried out.  They
     # are transient and must not appear in the published repository tree.
     skip_files = {
@@ -980,33 +1012,58 @@ def build_tree_text(repo_root: Path) -> None:
         "commitmsg.txt",
         "audit.txt",
     }
+
+    tracked = _tracked_files(repo_root)
+    if tracked is None:
+        # Git is unavailable: fall back to walking the working directory.
+        tracked = []
+        for path in sorted(repo_root.rglob("*")):
+            if path.is_file():
+                tracked.append(path.relative_to(repo_root).as_posix())
+
+    # Build a nested tree of directories and file names.
+    root: Dict[str, Any] = {}
+    for relative in tracked:
+        parts = relative.split("/")
+        if parts[-1] in skip_files:
+            continue
+        node = root
+        for part in parts[:-1]:
+            node = node.setdefault(part, {})
+            if not isinstance(node, dict):  # pragma: no cover - defensive
+                break
+        else:
+            if isinstance(node, dict):
+                node[parts[-1]] = None
+
     lines: List[str] = [f"{repo_root.name}/"]
 
-    def walk(directory: Path, prefix: str, depth: int) -> None:
+    def render(node: Dict[str, Any], prefix: str, depth: int) -> None:
         if depth > 3:
             return
-        try:
-            entries = sorted(directory.iterdir(),
-                             key=lambda p: (p.is_file(), p.name.lower()))
-        except OSError:
-            return
-        entries = [e for e in entries
-                   if e.name not in skip_dirs and e.name not in skip_files]
-        for idx, entry in enumerate(entries):
-            last = idx == len(entries) - 1
+        names = sorted(node.keys(), key=lambda n: (node[n] is None, n.lower()))
+        for index, name in enumerate(names):
+            last = index == len(names) - 1
             connector = "`-- " if last else "|-- "
-            if entry.is_dir():
-                lines.append(f"{prefix}{connector}{entry.name}/")
-                if entry.name not in {"figures", "raw"}:
-                    walk(entry, prefix + ("    " if last else "|   "), depth + 1)
-            else:
-                size = entry.stat().st_size
+            child = node[name]
+            if child is None:
+                path = repo_root / name
+                try:
+                    size = path.stat().st_size
+                except OSError:
+                    size = 0
                 if size > 400_000:
-                    lines.append(f"{prefix}{connector}{entry.name}  ({size // 1024} KB, omitted)")
+                    lines.append(
+                        f"{prefix}{connector}{name}  ({size // 1024} KB, omitted)"
+                    )
                 else:
-                    lines.append(f"{prefix}{connector}{entry.name}")
+                    lines.append(f"{prefix}{connector}{name}")
+            else:
+                lines.append(f"{prefix}{connector}{name}/")
+                if name not in collapsed_dirs:
+                    render(child, prefix + ("    " if last else "|   "), depth + 1)
 
-    walk(repo_root, "", 0)
+    render(root, "", 0)
     return "\n".join(lines)
 
 
@@ -1679,8 +1736,9 @@ def build_report(results_dir: Path, figures_dir: Path, out_path: Path,
     w.h2("3.2 Repository structure")
     w.body(
         "The repository produced by the agent has the following layout. The "
-        "complete tree, as generated from the working copy at report-build time, is "
-        "reproduced in the monospace block below."
+        "tree below is generated from the files that git tracks at report-build "
+        "time, so it is the repository as it is published rather than as it "
+        "happens to sit on the author's machine."
     )
     w.code_block(build_tree_text(src_root), size=8.0)
 
@@ -2452,6 +2510,12 @@ def build_report(results_dir: Path, figures_dir: Path, out_path: Path,
     pages_url = str(site.get("pages_url") or site.get("pages") or site.get("url") or "").strip()
     owner = str(site.get("owner") or site.get("user") or site.get("username") or "").strip()
     repo_name = str(site.get("repo_name") or site.get("repo") or "").strip()
+    clone_url = str(site.get("clone_url") or "").strip()
+    if not clone_url:
+        if repo_url:
+            clone_url = f"{repo_url.rstrip('/')}.git"
+        elif owner and repo_name:
+            clone_url = f"https://github.com/{owner}/{repo_name}.git"
 
     if not pages_url:
         owner_part = owner if owner else "<github-username>"
@@ -2513,28 +2577,30 @@ def build_report(results_dir: Path, figures_dir: Path, out_path: Path,
     w.body(
         "The steps below produce the URL that appears at the beginning of this "
         "section. They are listed so that the publication can be reproduced "
-        "exactly, and so that the placeholder in the previous subsection can be "
+        "exactly, and so that the address in the previous subsection can be "
         "resolved without ambiguity."
     )
     w.numbered([
         "Create the repository on GitHub and push the working copy: git init, "
         "git add ., git commit -m \"AI Assignment 3: POLCA Net\", then git branch "
         "-M main, git remote add origin "
-        "https://github.com/<owner>/<repo>.git and git push -u origin main.",
+        f"{clone_url} and git push -u origin main.",
         "Enable GitHub Pages for the repository: open Settings > Pages, set "
-        "Source to \"Deploy from a branch\", choose the branch main and the "
-        "/docs folder, and save. The site is then published at "
-        "https://<owner>.github.io/<repo>/.",
-        "Record the final values in report/site_config.json as "
-        "{\"owner\": \"<owner>\", \"repo\": \"<repo>\", \"repo_url\": "
-        "\"https://github.com/<owner>/<repo>\", \"pages_url\": "
-        "\"https://<owner>.github.io/<repo>/\"}. The same file carries the "
-        "\"author\" field, which is rendered on the title page, in Section 6.1 "
-        "and in the header and the footer of the published site, so the "
-        "student identity is written in one place only.",
-        "Rebuild the report so that Section 6 carries the real link: "
-        "python report/build_report.py, followed by python report/docx_to_pdf.py "
-        "to regenerate the PDF.",
+        "Source to \"Deploy from a branch\", and in the branch dropdown select "
+        "the entry that reads \"main /docs\" - the branch and the folder are "
+        "combined into a single dropdown in the current interface, and the "
+        "\"/docs\" suffix is what makes the folder inside the repository the "
+        "root of the published site. Save, wait about a minute for the first "
+        "build, and the site appears at the URL given at the start of this "
+        "section.",
+        "The same file carries the identity of the repository and of the author: "
+        "report/site_config.json holds the keys \"owner\", \"repo\", \"repo_url\", "
+        "\"pages_url\", \"clone_url\" and \"author\". The \"author\" field is "
+        "rendered on the title page, in Section 6.1 and in the header and the "
+        "footer of the published site, so the student identity is written in "
+        "one place only; the report is rebuilt with "
+        "\"python report/build_report.py\" followed by "
+        "\"python report/docx_to_pdf.py\".",
     ])
 
     w.h2("6.3 Layout of the published code")
@@ -2567,8 +2633,8 @@ def build_report(results_dir: Path, figures_dir: Path, out_path: Path,
         "clone."
     )
     w.code_block(
-        "git clone https://github.com/<owner>/<repo>.git\n"
-        "cd <repo>\n"
+        f"git clone {clone_url}\n"
+        f"cd {repo_name or '<repo>'}\n"
         "pip install -r requirements.txt\n"
         "\n"
         "# full experiment matrix -> results/metrics.csv, results/metrics.json,\n"

@@ -4,7 +4,8 @@
   "repo_url": "https://github.com/umjohn123/AIassgin3",
   "pages_url": "https://umjohn123.github.io/AIassgin3/",
   "clone_url": "https://github.com/umjohn123/AIassgin3.git",
-  "pages_source": "main / docs",
+  "pages_source": "main /docs",
   "author": "CHAOWENJIE UC325315",
-  "note": "The author field is read by report/build_report.py (title page and Section 6.1) and report/sync_site_assets.py (site header and footer), so the student identity is set in exactly one place. Fill in the correct owner/repository if the GitHub account differs."
+  "licence": "MIT",
+  "note": "The author field is read by report/build_report.py (title page and Section 6.1) and report/sync_site_assets.py (site header and footer), so the student identity is set in exactly one place. The pages_source field records the GitHub Pages publishing source: 'main /docs' means the branch main and the docs folder, which is what the Settings > Pages dropdown must be set to."
 }

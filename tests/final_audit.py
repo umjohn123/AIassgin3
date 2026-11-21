@@ -79,6 +79,29 @@ for rel in [
     check(f"no supervisor placeholder in {rel}", "Lecturer Name" not in text)
     check(f"no supervisor key in {rel}", '"supervisor"' not in text)
 
+# An unfilled placeholder in a delivered document is a defect in its own
+# right: the reader sees a template, not the finished report.  These are the
+# tokens that a half-finished edit tends to leave behind.
+PLACEHOLDER_TOKENS = [
+    "<owner>",
+    "<repo>",
+    "<github-username>",
+    "<repository-name>",
+    "to be confirmed",
+    "PLACEHOLDER",
+]
+for rel in [
+    "README.md",
+    "docs/README.md",
+    "docs/index.html",
+    "report/report_text.md",
+    "report/site_config.json",
+    "LICENSE",
+]:
+    text = (root / rel).read_text(encoding="utf-8")
+    for token in PLACEHOLDER_TOKENS:
+        check(f"no {token!r} placeholder in {rel}", token not in text)
+
 print("\n== Figures (plan lists 8) ==")
 figs = sorted((root / "results" / "figures").glob("*.png"))
 check("8 figures", len(figs) == 8, f"{len(figs)} found")
@@ -140,6 +163,39 @@ check(
     "prompt log mirror in sync",
     (root / "docs" / "assets" / "AI_PROMPTS.md").read_bytes()
     == (root / "AI_PROMPTS.md").read_bytes(),
+)
+
+print("\n== GitHub Pages publishing source ==")
+# GitHub Pages publishes exactly one folder.  The project page lives in
+# ``docs/``, so that folder must be the publishing source; the check makes
+# sure the recorded value and the documentation agree, because a mismatch
+# here is what makes the live site fall back to the repository README.
+config = json.loads((root / "report" / "site_config.json").read_text(encoding="utf-8"))
+check(
+    "pages_source is main /docs",
+    str(config.get("pages_source", "")).strip() == "main /docs",
+    str(config.get("pages_source")),
+)
+check(".nojekyll in the repository root", (root / ".nojekyll").exists())
+check(".nojekyll in docs/", (root / "docs" / ".nojekyll").exists())
+root_index = root / "index.html"
+check("root redirect page exists", root_index.exists())
+if root_index.exists():
+    redirect = root_index.read_text(encoding="utf-8")
+    check("root redirect points at docs/", 'href="docs/"' in redirect)
+# Every file the published site references must exist inside the published
+# folder, or the link returns a 404 on the live site.
+published = root / "docs"
+for rel in sorted(set(re.findall(r'(?:src|href)="(assets/[^"]+)"', html))):
+    check(f"published asset {rel}", (published / rel).exists())
+check(
+    "site has an entry file",
+    (published / "index.html").exists(),
+)
+check(
+    "license file present",
+    (root / "LICENSE").exists(),
+    str(config.get("licence", "")),
 )
 
 print("\n== Git ==")

@@ -160,27 +160,18 @@ The implementation followed a four-stage loop that the agent was instructed to a
 The generation prompts were deliberately narrow. Each prompt named a single file, specified its public API and its output types, restated the formula that the file had to implement, and forbade the agent from importing anything from the other project modules. The effect of this restriction was that the module boundaries became genuine contracts: each file could be unit-tested in isolation, and an API mismatch between two modules could not hide inside a third.
 
 3.2 Repository structure
-The repository produced by the agent has the following layout. The complete tree, as generated from the working copy at report-build time, is reproduced in the monospace block below.
+The repository produced by the agent has the following layout. The tree below is generated from the files that git tracks at report-build time, so it is the repository as it is published rather than as it happens to sit on the author's machine.
 ```
 AIassgin3/
-|-- .cursor/
-|   `-- plans/
-|       `-- polca-net_ai_assignment_3_8ee7298e.plan.md
-|-- .pytest_cache/
-|   |-- v/
-|   |   `-- cache/
-|   |       `-- nodeids
-|   |-- .gitignore
-|   |-- CACHEDIR.TAG
-|   `-- README.md
 |-- docs/
 |   |-- assets/
 |   |   |-- figures/
 |   |   |-- report/
-|   |   |   |-- AI_Assignment3_Report.docx  (1185 KB, omitted)
-|   |   |   `-- AI_Assignment3_Report.pdf  (1627 KB, omitted)
+|   |   |   |-- AI_Assignment3_Report.docx
+|   |   |   `-- AI_Assignment3_Report.pdf
 |   |   `-- AI_PROMPTS.md
 |   |-- .gitkeep
+|   |-- .nojekyll
 |   |-- index.html
 |   `-- README.md
 |-- experiments/
@@ -189,8 +180,8 @@ AIassgin3/
 |-- report/
 |   |-- figures/
 |   |-- .gitkeep
-|   |-- AI_Assignment3_Report.docx  (1186 KB, omitted)
-|   |-- AI_Assignment3_Report.pdf  (1631 KB, omitted)
+|   |-- AI_Assignment3_Report.docx
+|   |-- AI_Assignment3_Report.pdf
 |   |-- build_report.py
 |   |-- docx_to_pdf.py
 |   |-- math_render.py
@@ -204,14 +195,13 @@ AIassgin3/
 |-- results/
 |   |-- digits/
 |   |   |-- ablation.csv
-|   |   |-- latents.npz  (2136 KB, omitted)
-|   |   |-- loss_history.json  (543 KB, omitted)
+|   |   |-- latents.npz
+|   |   |-- loss_history.json
 |   |   |-- metrics.csv
 |   |   |-- metrics.json
 |   |   `-- summary.md
 |   |-- fashion/
 |   |   |-- ablation.csv
-|   |   |-- latents.npz  (785841 KB, omitted)
 |   |   |-- loss_history.json
 |   |   |-- metrics.csv
 |   |   |-- metrics.json
@@ -219,14 +209,12 @@ AIassgin3/
 |   |-- figures/
 |   |-- mnist/
 |   |   |-- ablation.csv
-|   |   |-- latents.npz  (770974 KB, omitted)
 |   |   |-- loss_history.json
 |   |   |-- metrics.csv
 |   |   |-- metrics.json
 |   |   `-- summary.md
 |   |-- ablation.csv
-|   |-- latents.npz  (1558952 KB, omitted)
-|   |-- loss_history.json  (580 KB, omitted)
+|   |-- loss_history.json
 |   |-- metrics.csv
 |   |-- metrics.json
 |   |-- run_digits.log
@@ -254,43 +242,16 @@ AIassgin3/
 |   `-- test_pipeline.py
 |-- .gitattributes
 |-- .gitignore
-|-- _probe.docx
-|-- _probe.pdf
+|-- .nojekyll
 |-- AI_PROMPTS.md
-|-- b.txt
-|-- f.txt
-|-- f2.txt
-|-- f3.txt
-|-- full10.png
-|-- full9.png
-|-- look.py
-|-- m8.png
-|-- m9.png
+|-- index.html
+|-- LICENSE
 |-- merge_results.py
-|-- omml.txt
-|-- p.txt
-|-- probe.py
 |-- README.md
 |-- regen_summary.py
 |-- requirements.txt
 |-- run_all.py
-|-- run_large.py
-|-- t.txt
-|-- test_math.py
-|-- z_cls.png
-|-- z_cls2.png
-|-- z_com.png
-|-- z_com2.png
-|-- z_met2.png
-|-- z_met3.png
-|-- z_metrics.png
-|-- z_ort.png
-|-- z_ort2.png
-|-- z_polca.png
-|-- z_rec.png
-|-- z_var.png
-|-- z_var2.png
-`-- zoom9.png
+`-- run_large.py
 ```
 
 3.3 Key implementation excerpts
@@ -697,11 +658,10 @@ Project page: https://umjohn123.github.io/AIassgin3/
 The repository itself is at https://github.com/umjohn123/AIassgin3. The published site contains the project description, the repository tree, the key source files with syntax highlighting, the result tables and the report figures, and a link to the PDF version of this report.
 
 6.2 How the site is published
-The steps below produce the URL that appears at the beginning of this section. They are listed so that the publication can be reproduced exactly, and so that the placeholder in the previous subsection can be resolved without ambiguity.
-  1. Create the repository on GitHub and push the working copy: git init, git add ., git commit -m "AI Assignment 3: POLCA Net", then git branch -M main, git remote add origin https://github.com/<owner>/<repo>.git and git push -u origin main.
-  2. Enable GitHub Pages for the repository: open Settings > Pages, set Source to "Deploy from a branch", choose the branch main and the /docs folder, and save. The site is then published at https://<owner>.github.io/<repo>/.
-  3. Record the final values in report/site_config.json as {"owner": "<owner>", "repo": "<repo>", "repo_url": "https://github.com/<owner>/<repo>", "pages_url": "https://<owner>.github.io/<repo>/"}. The same file carries the "author" field, which is rendered on the title page, in Section 6.1 and in the header and the footer of the published site, so the student identity is written in one place only.
-  4. Rebuild the report so that Section 6 carries the real link: python report/build_report.py, followed by python report/docx_to_pdf.py to regenerate the PDF.
+The steps below produce the URL that appears at the beginning of this section. They are listed so that the publication can be reproduced exactly, and so that the address in the previous subsection can be resolved without ambiguity.
+  1. Create the repository on GitHub and push the working copy: git init, git add ., git commit -m "AI Assignment 3: POLCA Net", then git branch -M main, git remote add origin https://github.com/umjohn123/AIassgin3.git and git push -u origin main.
+  2. Enable GitHub Pages for the repository: open Settings > Pages, set Source to "Deploy from a branch", and in the branch dropdown select the entry that reads "main /docs" - the branch and the folder are combined into a single dropdown in the current interface, and the "/docs" suffix is what makes the folder inside the repository the root of the published site. Save, wait about a minute for the first build, and the site appears at the URL given at the start of this section.
+  3. The same file carries the identity of the repository and of the author: report/site_config.json holds the keys "owner", "repo", "repo_url", "pages_url", "clone_url" and "author". The "author" field is rendered on the title page, in Section 6.1 and in the header and the footer of the published site, so the student identity is written in one place only; the report is rebuilt with "python report/build_report.py" followed by "python report/docx_to_pdf.py".
 
 6.3 Layout of the published code
 The repository mirrors the structure of the project: the src/ directory contains the POLCA Net implementation and the evaluation pipeline, results/ contains the metric tables and the figures, tests/ contains the verification and smoke-test suites, docs/ contains the GitHub Pages source, and report/ contains the script that generated this document together with its output. AI_PROMPTS.md at the root records the complete prompt history behind every one of those artefacts.
@@ -710,8 +670,8 @@ One detail of the publication is worth stating because it is easy to get wrong. 
 6.4 Cloning and running the project
 The project is a standard Python package with a flat module layout; it does not require installation, only that the repository root is on the Python path. The commands below reproduce the full pipeline from a fresh clone.
 ```
-git clone https://github.com/<owner>/<repo>.git
-cd <repo>
+git clone https://github.com/umjohn123/AIassgin3.git
+cd AIassgin3
 pip install -r requirements.txt
 
 # full experiment matrix -> results/metrics.csv, results/metrics.json,

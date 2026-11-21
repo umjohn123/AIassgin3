@@ -1134,6 +1134,83 @@ still typeset an equation wrongly, and only looking at the page will say so.
 
 ---
 
+## Stage 14 — Making the published site actually publish the site
+
+### Prompt 14.1 (the live site shows the README and the links 404)
+
+The student published the repository and enabled GitHub Pages, then reported
+that the live URL showed the *README* rather than the project page, and that
+clicking `docs/assets/` and `report/` returned a 404.
+
+### AI response (summary)
+
+The agent did not guess; it fetched the live URLs and compared them against
+the local tree. The evidence was unambiguous:
+
+| URL | What came back |
+|---|---|
+| `/` | the README, rendered |
+| `/requirements.txt` | the file - so the site root was the *repository* root |
+| `/docs/index.html` | the project page - so `docs/` was published, but as a sub-path |
+| `/docs/assets/report/...pdf` | the report - reachable, under a `/docs/` prefix |
+| `/docs/assets/` | 404 - no directory index is generated |
+
+The cause was the publishing source. GitHub Pages publishes exactly one
+folder. The source had been set to `main` with the `/ (root)` folder, so the
+*repository* root became the site root, and because the root contains a
+`README.md`, GitHub rendered that as the landing page. The `docs/` folder was
+published too, but under a `/docs/` prefix, so every relative link inside it
+resolved one level too deep and the links that pointed at a directory 404'd -
+GitHub does not generate directory indexes.
+
+Two changes were made, one for correctness and one for robustness.
+
+*Correctness.* The instructions in the report, in `README.md` and in
+`docs/README.md` now name the exact entry to select: **`main /docs`**. The
+branch and the folder are combined into a single dropdown in the current
+GitHub interface, and the earlier wording ("the `/ (root)` folder, or `/docs`
+if that is what the dropdown shows") described a dropdown that no longer
+exists - it is what led to the wrong folder being chosen in the first place.
+
+*Robustness.* The site should not depend on one dropdown being picked
+correctly, so the repository root now carries a small redirect page and
+`.nojekyll` markers sit in both the root and `docs/`. The `.nojekyll` marker
+tells GitHub Pages to serve the files verbatim instead of running them
+through Jekyll, which matters here: the page is a single self-contained HTML
+file with no front matter, and Jekyll processing it is a risk rather than a
+benefit. With both in place the project page is reachable whichever of the
+two publishing sources is selected.
+
+### Prompt 14.2 (the licence still says "placeholder")
+
+### AI response (summary)
+
+The README and the site footer carried `MIT - placeholder, to be confirmed by
+the author before submission`. The audit did not catch it, because the audit
+was written to look for a *supervisor* placeholder - the field the assignment
+actually asks for - and not for the general case.
+
+A `LICENSE` file was added with the standard MIT text, and the placeholder
+was replaced in both places. The audit was then extended to look for a list
+of placeholder tokens across every delivered document, and to check the
+things that make the *published* site correct rather than merely present: that
+`pages_source` is `main /docs`, that both `.nojekyll` markers exist, that the
+root redirect page points at `docs/`, and that every file the site references
+exists inside the published folder.
+
+### The repository tree in the report
+
+One further defect surfaced while the report was rebuilt. The tree in
+Section 3.2 was produced by walking the working directory, so it listed the
+pytest cache, the editor's plan folder and a dozen scratch files left behind
+by the diagnostics of Stage 13 - files that are in `.gitignore` and would
+never appear in the published repository. The tree is now built from
+`git ls-files`, so it shows the repository as it is published. A reader who
+clones the repository and compares it with the tree in the report now sees the
+same thing.
+
+---
+
 ## Appendix A — Where each prompt landed in the report
 
 | Stage | Report section | Artefact produced |
@@ -1152,6 +1229,7 @@ still typeset an equation wrongly, and only looking at the page will say so.
 | 11 | 6 | Author identity read from `report/site_config.json` into the title page, Section 6.1 and the site |
 | 12 | 2, 4 | Native Word equations in the report, `report/math_render.py` |
 | 13 | 2, 4 | Centred, numbered, correctly typeset display equations |
+| 14 | 6 | `main /docs` publishing source, root redirect page, `.nojekyll` markers, `LICENSE`, extended `tests/final_audit.py` |
 | — | 6 | `docs/index.html` (this repository's project page) |
 
 ## Appendix B — Prompt statistics
@@ -1172,7 +1250,8 @@ still typeset an equation wrongly, and only looking at the page will say so.
 | 11 | 1 | 0 | 1 (name typed into a generated file rather than its source) |
 | 12 | 1 | 1 | 2 (unmatched delimiter, unhandled spacing commands) |
 | 13 | 1 | 1 | 5 (left-aligned, no numbers, fraction limits, broken radical, margin overhang) plus 3 (fraction flag order, `\log`, `\sqrt`) |
-| **Total** | **30** | **10** | **20** |
+| 14 | 2 | 1 | 4 (wrong publishing source, live site served the README, unresolved licence placeholder, scratch files in the published tree) |
+| **Total** | **32** | **11** | **24** |
 
 ---
 

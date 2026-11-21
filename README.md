@@ -239,11 +239,18 @@ python report/sync_site_assets.py
 1. Push the repository to GitHub with the `docs/` folder committed.
 2. Go to **Settings → Pages**.
 3. Under **Build and deployment → Source**, choose **Deploy from a branch**.
-4. Select the **`main`** branch and the **`/ (root)`** folder — *if* the repository
-   already has a `docs/` folder at its root, GitHub will offer `/docs` instead; choose
-   whichever entry corresponds to `docs/`.
-5. Save. The site is published at `https://<user>.github.io/<repo>/` after the first
-   build (usually under a minute).
+4. In the **Branch** dropdown, select the entry that reads **`main /docs`**. The branch
+   and the folder are combined into a single dropdown in the current GitHub interface;
+   the `/docs` suffix is what makes the `docs/` folder the root of the published site.
+   Selecting `main / (root)` instead would publish the *repository root*, and GitHub
+   would then render `README.md` as the landing page rather than the project page.
+5. Save. The site is published at `https://umjohn123.github.io/AIassgin3/` after the
+   first build (usually under a minute).
+
+If the dropdown offers no `/docs` entry, the site still works: a redirect page sits at
+the root of the repository, and a `.nojekyll` marker in each folder stops GitHub from
+processing either one with Jekyll. Both are committed, so the project page is
+reachable whichever of the two publishing sources is selected.
 
 See [`docs/README.md`](docs/README.md) for the longer version of these instructions.
 
@@ -273,4 +280,4 @@ multiple measurements in taxonomic problems"*, 1936.
 
 ## 8. Licence
 
-MIT — placeholder, to be confirmed by the author before submission.
+MIT — see [`LICENSE`](LICENSE). Copyright © 2026 CHAOWENJIE UC325315.
