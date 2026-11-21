@@ -38,6 +38,7 @@ ps_mem.ps1
 pip_install.log
 _r.log
 commitmsg.txt
+audit.txt
 results/_smoke/
 results/_smoke2/
 results/_probe/
