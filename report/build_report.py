@@ -2281,8 +2281,9 @@ def build_report(results_dir: Path, figures_dir: Path, out_path: Path,
     recon = pick_figure("reconstruction")
     w.figure(recon, "Reconstruction grid: the original test images against the "
                      "reconstructions produced by the compared methods on the same "
-                     "test samples. Each group of columns is one dataset and each "
-                     "row one sample, so that the reconstructions of a sample can be "
+                     "test samples. Each group of columns is one dataset, each "
+                     "column one method and each row one sample, named after its "
+                     "class, so that the reconstructions of a sample can be "
                      "compared with it directly.", width_cm=15.5)
 
     orth = pick_figure("orthogonality")

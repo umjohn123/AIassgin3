@@ -87,6 +87,22 @@ ABLATION_LABELS = {
 #: Order in which the methods are shown.
 METHOD_ORDER = ["pca", "lda", "ae", "polca", "polca_sup"]
 
+#: The seed and the test fraction the evaluation used.  The figures have
+#: to reproduce exactly that split, because the cached reconstructions
+#: belong to it.
+LATENT_SEED = 5
+TEST_SIZE = 0.2
+
+#: The class names of the datasets, for the row labels of the grid.
+CLASS_NAMES = {
+    "mnist": [str(d) for d in range(10)],
+    "digits": [str(d) for d in range(10)],
+    "fashion": [
+        "T-shirt", "Trouser", "Pullover", "Dress", "Coat",
+        "Sandal", "Shirt", "Sneaker", "Bag", "Ankle boot",
+    ],
+}
+
 
 # --------------------------------------------------------------------------- #
 # Styling
@@ -185,14 +201,96 @@ def _load_loss_history(out_dir: Path) -> Dict[str, Any]:
         return json.load(handle)
 
 
-def _dataset_images(dataset: str, n: int = 6):
-    """Load a handful of images of a dataset (returns images and labels)."""
-    from src.polca.data import get_dataset
+def _pick_run(
+    latents: Dict[str, Any],
+    dataset: str,
+    methods: Sequence[str],
+) -> Optional[str]:
+    """The run (latent dimension and seed) that every method shares.
+
+    The columns of the grid are compared with one another, so every
+    method has to come from the same run: two methods evaluated with
+    different seeds were trained on different splits and their
+    reconstructions belong to different samples.  The first shared run is
+    taken, in the order of the cache keys, so the figure is reproducible.
+    """
+    runs: List[str] = []
+    for method in methods:
+        for key in sorted(latents):
+            if (key.startswith(f"{dataset}__{method}__")
+                    and key.endswith("__recon_test")):
+                run = key[len(f"{dataset}__{method}__"):-len("__recon_test")]
+                if run not in runs:
+                    runs.append(run)
+                break
+
+    for run in runs:
+        if all(
+            any(
+                k.startswith(f"{dataset}__{method}__{run}__")
+                and k.endswith("__recon_test")
+                for k in latents
+            )
+            for method in methods
+        ):
+            return run
+    return None
+
+
+def _dataset_images(dataset: str, n: int = 6, seed: int = LATENT_SEED):
+    """Load the *test* images of a dataset (returns images and labels).
+
+    The reconstruction grid shows a test image next to the reconstructions
+    of it, so the originals have to come from the test split.  Taking them
+    from the training split instead would put a different sample in the
+    "Original" column than the one the methods reconstructed, and the
+    comparison the figure exists for would be void.
+
+    The split is the one the evaluation used: ``train_test_split_idx``
+    with the seed of the run and the default test size, which reproduces
+    exactly the partition the cached reconstructions belong to.
+    """
+    from src.polca.data import get_dataset, train_test_split_idx
 
     bundle = get_dataset(dataset, train=True)
-    images = np.asarray(bundle["images"])
-    labels = np.asarray(bundle["y"])
-    return images[:n], labels[:n]
+    X = np.asarray(bundle["X"], dtype=np.float32)
+    labels = np.asarray(bundle["y"], dtype=np.int64)
+    shape = tuple(bundle["image_shape"])
+
+    _, test_idx = train_test_split_idx(X.shape[0], TEST_SIZE, seed)
+    test_idx = test_idx[:n]
+
+    # ``X`` is already normalised to [0, 1] by every loader; the raw
+    # ``images`` array is not (the digits images run from 0 to 16, not to
+    # 255), so the features are used rather than the raw pixels.
+    images = X[test_idx].reshape(-1, *shape)
+    return images, labels[test_idx]
+
+
+def _cached_test_images(
+    latents: Dict[str, Any],
+    dataset: str,
+    shape: tuple,
+    n: int = 6,
+    seed: int = LATENT_SEED,
+) -> Optional[np.ndarray]:
+    """The test images of a dataset, taken from the cache when possible.
+
+    The evaluation stores the test images it used, so the figure can show
+    exactly the samples the cached reconstructions belong to.  When the
+    cache predates that, the split is reproduced instead; both paths give
+    the same images, and the cache is preferred because it cannot drift
+    away from the reconstructions.
+    """
+    for key in sorted(latents):
+        if not key.startswith(f"{dataset}__") or not key.endswith("__x_test"):
+            continue
+        if not key.endswith(f"__s{seed}__x_test"):
+            continue
+        flat = np.asarray(latents[key], dtype=np.float64)
+        if flat.shape[0] >= n:
+            return flat[:n].reshape(-1, *shape)
+    return None
 
 
 def _to_display_image(flat: np.ndarray, shape: tuple) -> np.ndarray:
@@ -254,15 +352,35 @@ def figure_reconstruction_grid(
     axes = np.atleast_2d(axes)
 
     for g, dataset in enumerate(datasets):
-        images, _ = _dataset_images(dataset, n=n_samples)
         shape = (8, 8) if dataset == "digits" else (28, 28)
+
+        # Every method has to be shown on the *same* run: the columns
+        # are compared with one another, and two methods that were
+        # evaluated with different seeds were trained on different splits
+        # and cannot be put side by side.  The run is therefore chosen
+        # once, and used for the originals as well.
+        run = _pick_run(latents, dataset, methods)
+        if run is None:
+            print(f"  ! no common run for {dataset} -- skipping its group")
+            continue
+        # The run key ends in the seed, e.g. ``d8__s5``.
+        seed = int(run.rsplit("__s", 1)[-1])
+
+        # The originals of the samples the reconstructions belong to.
+        # The cache is preferred: it holds exactly the test images the
+        # evaluation used, so the "Original" column and the three
+        # reconstruction columns always show the same samples.
+        images, image_labels = _dataset_images(dataset, n=n_samples, seed=seed)
+        cached = _cached_test_images(latents, dataset, shape, n=n_samples, seed=seed)
+        if cached is not None:
+            images = cached
 
         for mi, method in enumerate(["original"] + methods):
             key = None
             if method != "original":
                 for k in sorted(latents):
                     if (
-                        k.startswith(f"{dataset}__{method}__")
+                        k.startswith(f"{dataset}__{method}__{run}__")
                         and k.endswith("__recon_test")
                     ):
                         key = k
@@ -277,7 +395,12 @@ def figure_reconstruction_grid(
                 ax.grid(False)
                 if method == "original":
                     if r < images.shape[0]:
-                        ax.imshow(images[r].astype(np.float64) / 255.0, cmap="gray", vmin=0, vmax=1)
+                        # ``images`` is already in [0, 1]: it comes from
+                        # the normalised features, not from the raw
+                        # pixels.  Dividing it by 255 again would leave
+                        # the digits images (whose raw range is 0 to 16)
+                        # almost black.
+                        ax.imshow(images[r], cmap="gray", vmin=0, vmax=1)
                     else:
                         ax.axis("off")
                 elif recon is not None and r < recon.shape[0]:
@@ -294,8 +417,16 @@ def figure_reconstruction_grid(
                     )
                     ax.set_title(label, fontsize=8, pad=4)
                 if col == 0:
-                    ax.set_ylabel(f"#{r + 1}", fontsize=8, rotation=0,
-                                  labelpad=14, va="center")
+                    # The row is named after the class of the sample, so
+                    # that a reader can tell at a glance which digit or
+                    # which garment is being reconstructed.
+                    names = CLASS_NAMES.get(dataset)
+                    if names is not None and r < len(image_labels):
+                        row_label = names[int(image_labels[r])]
+                    else:
+                        row_label = f"#{r + 1}"
+                    ax.set_ylabel(row_label, fontsize=8, rotation=0,
+                                  labelpad=16, va="center")
 
     # The dataset names the group of columns.  The label is placed on the
     # figure itself, centred on the whole group, because an axis can only

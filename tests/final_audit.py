@@ -18,6 +18,11 @@ from pathlib import Path
 root = Path(__file__).resolve().parents[1]
 ok = True
 
+# The repository root has to be importable: the audit reads the figure
+# code to check that the reconstruction grid pairs each original with
+# the reconstruction of that sample.
+sys.path.insert(0, str(root))
+
 
 def check(label, condition, detail=""):
     global ok
@@ -110,6 +115,67 @@ for rel in [
 print("\n== Figures (plan lists 8) ==")
 figs = sorted((root / "results" / "figures").glob("*.png"))
 check("8 figures", len(figs) == 8, f"{len(figs)} found")
+
+# The reconstruction grid puts a test image next to the reconstructions of
+# *that* image.  It once showed the training images instead, so every row
+# held two unrelated samples and the comparison the figure exists for was
+# void.  The originals are therefore checked against the reconstructions:
+# a paired sample correlates strongly, a mismatched one does not.
+try:
+    import numpy as np
+
+    from src.make_figures import (
+        _cached_test_images,
+        _dataset_images,
+        _load_latents,
+        _pick_run,
+    )
+
+    _latents = _load_latents(root / "results")
+    _pairs = []
+    for _dataset, _shape in (("digits", (8, 8)), ("mnist", (28, 28)),
+                              ("fashion", (28, 28))):
+        _run = _pick_run(_latents, _dataset, ("pca", "ae", "polca"))
+        if _run is None:
+            _pairs.append(f"{_dataset}: no shared run")
+            continue
+        _seed = int(_run.rsplit("__s", 1)[-1])
+        _images, _labels = _dataset_images(_dataset, n=6, seed=_seed)
+        _cached = _cached_test_images(_latents, _dataset, _shape, n=6, seed=_seed)
+        if _cached is not None:
+            _images = _cached
+        for _method in ("pca", "ae", "polca"):
+            _key = next(
+                (k for k in sorted(_latents)
+                 if k.startswith(f"{_dataset}__{_method}__{_run}__")
+                 and k.endswith("__recon_test")),
+                None,
+            )
+            if _key is None:
+                _pairs.append(f"{_dataset}/{_method}: no reconstruction")
+                continue
+            _recon = _latents[_key]
+            _corrs = []
+            for _r in range(min(6, _images.shape[0])):
+                _a = _images[_r].ravel()
+                _b = np.asarray(_recon[_r]).reshape(_shape).ravel()
+                if _a.std() < 1e-9 or _b.std() < 1e-9:
+                    continue
+                _corrs.append(float(np.corrcoef(_a, _b)[0, 1]))
+            _mean = float(np.mean(_corrs)) if _corrs else 0.0
+            # A paired sample correlates far above 0.7; the mismatched
+            # originals this check guards against score below 0.65 even
+            # on the dataset whose samples are most alike.
+            if _mean < 0.7:
+                _pairs.append(f"{_dataset}/{_method}: corr {_mean:+.2f}")
+    check(
+        "the reconstruction grid pairs each original with its reconstruction",
+        not _pairs,
+        "; ".join(_pairs),
+    )
+except Exception as exc:  # pragma: no cover - the check must not break the audit
+    check("the reconstruction grid pairs each original with its reconstruction",
+          False, str(exc))
 
 print("\n== Experiment matrix ==")
 rows = list(csv.DictReader(open(root / "results" / "metrics.csv", encoding="utf-8")))

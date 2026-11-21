@@ -311,9 +311,17 @@ def _run_method(
         # float64 copies that are produced before this point, and the figures
         # only display the values, so the halving of the file size (and of
         # the memory needed to merge the three datasets) costs nothing.
+        #
+        # ``x_test`` is the test images themselves.  The reconstruction grid
+        # has to show a test image next to the reconstruction of *that*
+        # image; without the originals in the cache the figure would have
+        # to reproduce the split, and a split that does not match the one
+        # the reconstruction was made on puts a different sample in the
+        # "Original" column than the one the methods reconstructed.
         artifacts = {
             "z_test": z_test.astype(np.float32),
             "recon_test": recon_test.astype(np.float32),
+            "x_test": np.asarray(X_test, dtype=np.float32),
         }
 
     result["_artifacts"] = artifacts
@@ -680,6 +688,14 @@ def run_full_evaluation(
                         latent_store[f"{key}__recon_test"] = artifacts["recon_test"]
                         latent_store[f"{key}__y_test"] = np.asarray(
                             y_test, dtype=np.int64
+                        )
+                        # The test images are the same for every method
+                        # and every latent dimension of this dataset and
+                        # seed, so they are stored once under a key that
+                        # does not repeat them: the file would otherwise
+                        # grow by a third.
+                        latent_store[f"{dataset}__d{latent_dim}__s{seed}__x_test"] = (
+                            artifacts["x_test"]
                         )
                     if res.get("history") is not None:
                         history_store[key] = res["history"]
