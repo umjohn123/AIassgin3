@@ -1082,6 +1082,58 @@ document.
 
 ---
 
+## Stage 13 — Refining the equation typography
+
+### Prompt 13.1 (the equations still do not look right)
+
+The student looked at the result and said the equations were still not
+rendered well. The first attempt had replaced ASCII with genuine Word
+equations, but the *typography* of those equations was still wrong.
+
+### AI response (summary)
+
+The agent did not ask what "not good" meant; it measured. The PDF was opened
+and every span was inspected - its font, its size, its position - and the
+pages were rendered to images at 400 to 700 dpi and looked at. Five concrete
+defects came out of that, each of which a reading of the source would have
+missed:
+
+| Defect | Evidence | Fix |
+|---|---|---|
+| Equations sat at the left margin | first span `x=70.8` on every equation | a leading tab onto a centred tab stop |
+| No equation numbers | the report had none | right-aligned `(1)`..`(8)` in the paper's manner |
+| The summation inside the fraction had its limits underneath | `n-1` / `i=0` stacked under the `∑` in `L_com` | limits move beside the operator inside a fraction, as LaTeX sets them |
+| The radical did not cover its argument | the `√` sat alone, with the fraction beside it | `m:rad` with `degHide` |
+| The equation number overhung the margin by 3pt | right edge `527.50` against a margin of `524.45` | the right tab stop moved to 15.9 cm |
+
+The structural change was to stop using the block-level `m:oMathPara` and to
+lay the equation out as an ordinary paragraph with a centred tab stop and a
+right-aligned one. A block-level equation owns its whole paragraph and
+therefore cannot share it with a number; a tabbed paragraph can, and that is
+how a printed paper does it. The equation is then centred on the text block
+while its number sits flush against the right margin.
+
+Three further bugs surfaced while doing this, and again only because the
+rendered page was inspected:
+
+- The `frac` handler parsed the numerator and the denominator *before* it
+  knew it was inside a fraction, so the summation limits had already been
+  placed underneath the operator. The flag that suppresses the limits has to
+  be set *before* the arguments are parsed, not after.
+- `\log` rendered as an empty box: the text-command branch read the command
+  name as the argument, but `\log` has no argument - the name itself is the
+  text.
+- `\sqrt` was listed in the table of named symbols, so it was matched as the
+  character `√` before the radical handler ever saw it, and the argument was
+  discarded.
+
+The lesson recorded in Section 5.4 applies to typography as much as to
+arithmetic: **the artefact that will be read is the rendered page, not the
+source that produces it.** A parser can emit perfectly well-formed XML and
+still typeset an equation wrongly, and only looking at the page will say so.
+
+---
+
 ## Appendix A — Where each prompt landed in the report
 
 | Stage | Report section | Artefact produced |
@@ -1099,6 +1151,7 @@ document.
 | 10 | 3, 4, 6 | Corrected `merge_results.py`, hardened `report/build_report.py`, `results/summary.md` |
 | 11 | 6 | Author identity read from `report/site_config.json` into the title page, Section 6.1 and the site |
 | 12 | 2, 4 | Native Word equations in the report, `report/math_render.py` |
+| 13 | 2, 4 | Centred, numbered, correctly typeset display equations |
 | — | 6 | `docs/index.html` (this repository's project page) |
 
 ## Appendix B — Prompt statistics
@@ -1118,7 +1171,8 @@ document.
 | 10 | 1 | 0 | 2 (missing merged summary, report save lock) |
 | 11 | 1 | 0 | 1 (name typed into a generated file rather than its source) |
 | 12 | 1 | 1 | 2 (unmatched delimiter, unhandled spacing commands) |
-| **Total** | **29** | **9** | **12** |
+| 13 | 1 | 1 | 5 (left-aligned, no numbers, fraction limits, broken radical, margin overhang) plus 3 (fraction flag order, `\log`, `\sqrt`) |
+| **Total** | **30** | **10** | **20** |
 
 ---
 

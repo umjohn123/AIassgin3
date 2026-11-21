@@ -129,6 +129,26 @@ def _set_run_font(run, name: str = BODY_FONT, size: Optional[Pt] = None,
         run.font.color.rgb = color
 
 
+def _add_tab_stops(paragraph, centre_cm: float, right_cm: float) -> None:
+    """Give a paragraph a centred and a right-aligned tab stop.
+
+    A display equation is laid out as a single paragraph with three parts
+    separated by tab characters: an empty left part, the equation itself
+    (which lands on the centred tab stop) and the equation number (which
+    lands on the right tab stop).  This is the layout a printed paper uses,
+    and it is the only way to have the equation centred on the text block
+    *and* its number flush against the right margin.
+    """
+    p_pr = paragraph._p.get_or_add_pPr()
+    tabs = OxmlElement("w:tabs")
+    for position, alignment in ((centre_cm, "center"), (right_cm, "right")):
+        tab = OxmlElement("w:tab")
+        tab.set(qn("w:val"), alignment)
+        tab.set(qn("w:pos"), str(int(Cm(position).twips)))
+        tabs.append(tab)
+    p_pr.append(tabs)
+
+
 def _split_inline_math(text: str) -> List[Tuple[str, bool]]:
     """Split a string into prose and inline-equation segments.
 
@@ -324,6 +344,7 @@ class ReportWriter:
         self.doc = doc
         self.fig_no = 0
         self.table_no = 0
+        self.eq_no = 0
         self.text_log: List[str] = []
 
     # -- structure -------------------------------------------------------- #
@@ -435,13 +456,17 @@ class ReportWriter:
         self.text_log.append(code.rstrip("\n"))
         self.text_log.append("```")
 
-    def formula(self, latex: str, note: str = "") -> None:
+    def formula(self, latex: str, note: str = "", numbered: bool = True) -> None:
         """A display equation, typeset by Word's own maths engine.
 
         The argument is a small LaTeX subset (see ``report/math_render.py``).
-        If it cannot be parsed the equation is emitted as monospaced text
-        instead, so a typo in the source can never silently remove an
-        equation from the report.
+        The equation is centred on the text block and, unless ``numbered`` is
+        turned off, carries a right-aligned equation number in the manner of
+        a printed paper.
+
+        If the equation cannot be parsed the builder prints a warning and
+        falls back to the old monospaced rendering, so a typo in the source
+        can never silently remove an equation from the report.
         """
         try:
             xml = render_equation(latex)
@@ -452,10 +477,24 @@ class ReportWriter:
         if xml:
             p = self.doc.add_paragraph()
             pf = p.paragraph_format
-            pf.space_before = Pt(6)
-            pf.space_after = Pt(6)
+            pf.space_before = Pt(10)
+            pf.space_after = Pt(10)
             pf.line_spacing = 1.0
+            pf.keep_together = True
+            # Centre the equation and push the number to the right margin.
+            # The leading tab is what moves the equation onto the centred
+            # tab stop; without it the equation would sit at the left margin.
+            _add_tab_stops(p, centre_cm=8.0, right_cm=15.9)
+            p.add_run("\t")
             p._p.append(parse_xml(xml))
+            if numbered:
+                self.eq_no += 1
+                p.add_run("\t")
+                run = p.add_run(f"({self.eq_no})")
+                _set_run_font(run, BODY_FONT, Pt(11))
+            else:
+                # A trailing tab keeps the equation centred on its own.
+                p.add_run("\t")
         else:  # pragma: no cover - defensive
             p = self.doc.add_paragraph()
             pf = p.paragraph_format
@@ -470,7 +509,10 @@ class ReportWriter:
             _border(p, "8FA8C8")
 
         self.text_log.append("")
-        self.text_log.append(f"    {latex}")
+        if numbered:
+            self.text_log.append(f"    ({self.eq_no})  {latex}")
+        else:
+            self.text_log.append(f"    {latex}")
         if note:
             self.body(note, indent=True, italic=True)
 
@@ -1453,11 +1495,11 @@ def build_report(results_dir: Path, figures_dir: Path, out_path: Path,
         r"L_{\mathrm{ort}} \;=\; \frac{2}{n\,(n-1)} "
         r"\sum_{1 \leq i < j \leq n} { S_{ij}^{2} }"
         r"\;,\qquad S = \hat{Z}^{T}\hat{Z}",
-        "The orthogonality term. The sum runs over the strict upper triangle of S, "
-        "so each unordered pair of latent components is counted exactly once; the "
-        "prefactor 2/(n(n-1)) converts that sum into the mean squared off-diagonal "
-        "entry. A perfectly decorrelated latent space has $S = I$ and therefore "
-        "$L_{\\mathrm{ort}} = 0$.",
+        "The orthogonality term. The sum runs over the strict upper triangle of "
+        "$S$, so each unordered pair of latent components is counted exactly "
+        "once; the prefactor $2/(n(n-1))$ converts that sum into the mean squared "
+        "off-diagonal entry. A perfectly decorrelated latent space has $S = I$ and "
+        "therefore $L_{\\mathrm{ort}} = 0$.",
     )
     w.formula(
         r"L_{\mathrm{var}} \;=\; \sum_{i=0}^{n-1} "
@@ -1477,11 +1519,12 @@ def build_report(results_dir: Path, figures_dir: Path, out_path: Path,
         "ordering - and large when it increases.",
     )
     w.formula(
-        r"L_{\mathrm{class}} \;=\; \mathrm{CrossEntropy}\!\left( \mathrm{logits}(z),\, y \right)"
-        r"\qquad \left( = 0 \text{ when no labels are supplied} \right)",
+        r"L_{\mathrm{class}} \;=\; \mathrm{CrossEntropy}\!\left("
+        r"\mathrm{logits}(z),\, y \right)",
         "The optional classification term. It is present only in the supervised "
         "mode, in which the latent code is fed to a linear head and the "
-        "cross-entropy is back-propagated into the encoder.",
+        "cross-entropy is back-propagated into the encoder. It is exactly zero "
+        "when no labels are supplied.",
     )
     w.body(
         "Two implementation conventions must be stated, because the paper does not "
@@ -1923,10 +1966,10 @@ def build_report(results_dir: Path, figures_dir: Path, out_path: Path,
         "kept as a fallback for environments without SciPy."
     )
     w.formula(
-        r"\mathrm{NRMSE} \;=\; \frac{ \mathrm{RMSE} }"
-        r"{ \max(x) - \min(x) }"
-        r"\;,\qquad \mathrm{RMSE} \;=\; \sqrt{ \frac{1}{M} \sum_{k=1}^{M}"
-        r" ( x_{k} - \hat{x}_{k} )^{2} }",
+        r"\mathrm{RMSE} \;=\; \sqrt{ \frac{1}{M} \sum_{k=1}^{M}"
+        r" ( x_{k} - \hat{x}_{k} )^{2} }"
+        r"\;,\qquad \mathrm{NRMSE} \;=\; \frac{ \mathrm{RMSE} }"
+        r"{ \max(x) - \min(x) }",
         "The normalised root mean squared error, where $M$ is the number of "
         "reconstructed elements and the range is taken over the original signal.",
     )

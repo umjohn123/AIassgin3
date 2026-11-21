@@ -23,13 +23,27 @@ Supported syntax
 ``( )`` ``[ ]``     delimiters
 Everything else is copied literally.
 
-The parser is deliberately small rather than general: it has to render five
-equations faithfully, and a general LaTeX engine would be a far larger and
-much harder to verify dependency than the problem warrants.
+The parser is deliberately small rather than general: it has to render a
+handful of equations faithfully, and a general LaTeX engine would be a far
+larger and much harder to verify dependency than the problem warrants.
+
+Two details matter more than they look.
+
+*The size of the runs.*  A run without an explicit ``w:sz`` inherits the size
+of the surrounding paragraph, which makes an equation the same size as body
+text and leaves no room for the machinery of the equation to breathe.  Every
+run therefore carries an explicit half-point size.
+
+*Where the limits of a big operator go.*  A summation inside a fraction has
+no room beneath it for the limits, so LaTeX puts them as a subscript and a
+superscript beside the operator.  The same is true in this renderer: the
+limits of a ``\\sum`` move from under-and-over to beside-and-above whenever
+the operator is nested inside a fraction.
 """
 
 from __future__ import annotations
 
+import re
 from typing import List, Optional
 
 MATH_NS = "http://schemas.openxmlformats.org/officeDocument/2006/math"
@@ -37,6 +51,14 @@ WORD_NS = "http://schemas.openxmlformats.org/wordprocessingml/2006/main"
 
 #: The font Word itself uses for equations.
 MATH_FONT = "Cambria Math"
+
+#: The size of a display equation, in points.  Display equations are set
+#: slightly larger than the body text so that they read as display material.
+DISPLAY_SIZE = 12.5
+
+#: The size of an inline equation, in points.  An inline equation must not
+#: stand out from the prose that carries it.
+INLINE_SIZE = 12.0
 
 _CTRL_PR = (
     f'<m:ctrlPr><w:rPr><w:rFonts w:ascii="{MATH_FONT}" w:hAnsi="{MATH_FONT}"/>'
@@ -105,7 +127,6 @@ _SYMBOLS = {
     "ldots": "…",
     "dots": "…",
     "prime": "′",
-    "times": "×",
     "lVert": "‖",
     "rVert": "‖",
     "ll": "≪",
@@ -124,21 +145,23 @@ _ACCENTS = {
     "bar": "̄",  # combining macron
     "tilde": "̃",  # combining tilde
     "dot": "̇",  # combining dot above
+    "check": "̌",  # combining caron
+    "breve": "̆",  # combining breve
 }
 
 #: LaTeX spacing commands -> the space that is actually emitted.
 #:
-#: ``\;`` is a thick space, ``\:`` a medium one, ``\!`` a negative
-#: thin space (which pulls the following symbol closer to the preceding
-#: one) and the named commands are the usual word-sized spaces.
+#: ``\;`` is a thick space, ``\:`` a medium one, ``\!`` a negative thin
+#: space (which pulls the following symbol closer to the preceding one) and
+#: the named commands are the usual word-sized spaces.
 _SPACES = {
-    ",": "\u2009",   # thin space
-    " ": "\u0020",   # ordinary space
-    ":": "\u2005",   # medium space
-    ";": "\u2005",   # thick space
-    "!": "",          # negative thin space
-    "quad": "\u2003",
-    "qquad": "\u2003\u2003",
+    ",": " ",
+    " ": " ",
+    ":": " ",
+    ";": " ",
+    "!": "",
+    "quad": " ",
+    "qquad": "  ",
 }
 
 #: BlackBoard-bold characters, used for the expectation symbol.
@@ -151,20 +174,25 @@ _BLACKBOARD = {
     "Q": "ℚ",
 }
 
-#: Characters that Word renders as operators rather than ordinary symbols.
-_OPERATORS = set("+-=<>±×÷≤≥≠")
+#: Commands whose argument is upright text rather than mathematics.
+_TEXT_COMMANDS = (
+    "mathrm", "text", "operatorname", "log", "ln", "exp", "sin", "cos",
+    "tan", "max", "min", "arg", "det", "dim", "ker",
+)
 
 
 def _escape(text: str) -> str:
     return text.replace("&", "&amp;").replace("<", "&lt;").replace(">", "&gt;")
 
 
-def _run(text: str, upright: bool = False) -> str:
+def _run(text: str, upright: bool = False, size: float = DISPLAY_SIZE) -> str:
     """A single math run.  ``upright`` switches off the automatic italics."""
     style = '<m:rPr><m:sty m:val="p"/></m:rPr>' if upright else ""
+    half = int(round(size * 2))
     return (
         f"<m:r>{style}"
-        f'<w:rPr><w:rFonts w:ascii="{MATH_FONT}" w:hAnsi="{MATH_FONT}"/></w:rPr>'
+        f'<w:rPr><w:rFonts w:ascii="{MATH_FONT}" w:hAnsi="{MATH_FONT}"/>'
+        f'<w:sz w:val="{half}"/><w:szCs w:val="{half}"/></w:rPr>'
         f'<m:t xml:space="preserve">{_escape(text)}</m:t></m:r>'
     )
 
@@ -172,9 +200,13 @@ def _run(text: str, upright: bool = False) -> str:
 class _Parser:
     """Recursive-descent parser over the supported LaTeX subset."""
 
-    def __init__(self, source: str) -> None:
+    def __init__(self, source: str, size: float = DISPLAY_SIZE) -> None:
         self.s = source
         self.i = 0
+        self.size = size
+        #: Nesting depth inside a fraction, where big operators have to put
+        #: their limits beside them rather than beneath them.
+        self.in_fraction = 0
 
     # -- helpers ---------------------------------------------------------- #
     def _peek(self) -> str:
@@ -234,14 +266,14 @@ class _Parser:
     def _base(self) -> str:
         char = self._peek()
         if not char:
-            return _run("")
+            return _run("", size=self.size)
 
         if char == "\\":
             return self._command()
 
         if char == "{":
             self.i += 1
-            content = self._sequence()
+            content = self._sequence("}")
             self._expect("}")
             return content
 
@@ -249,16 +281,16 @@ class _Parser:
             return self._delimiter(char)
 
         if char.isalpha():
-            return _run(self._read_name())
+            return _run(self._read_name(), size=self.size)
 
         if char.isdigit():
             start = self.i
             while self._peek().isdigit() or self._peek() == ".":
                 self.i += 1
-            return _run(self.s[start:self.i])
+            return _run(self.s[start:self.i], size=self.size)
 
         self.i += 1
-        return _run(char)
+        return _run(char, size=self.size)
 
     def _delimiter(self, opening: str, closing: Optional[str] = None) -> str:
         if closing is None:
@@ -281,27 +313,48 @@ class _Parser:
             symbol = self._peek()
             if symbol in _SPACES:
                 self.i += 1
-                return _run(_SPACES[symbol])
-            return _run("\\")
+                return _run(_SPACES[symbol], size=self.size)
+            return _run("\\", size=self.size)
+
         if name in _SPACES:
-            return _run(_SPACES[name])
+            return _run(_SPACES[name], size=self.size)
 
         if name in _GREEK:
-            return _run(_GREEK[name])
+            return _run(_GREEK[name], size=self.size)
 
         if name in _SYMBOLS:
-            return _run(_SYMBOLS[name])
+            return _run(_SYMBOLS[name], size=self.size)
 
         if name == "frac":
-            numerator = self._group()
-            denominator = self._group()
+            # A big operator inside a fraction has no room for limits placed
+            # beneath it, so the limits move beside it.  The flag therefore
+            # has to be set *before* the two arguments are parsed.
+            self.in_fraction += 1
+            try:
+                numerator = self._group()
+                denominator = self._group()
+            finally:
+                self.in_fraction -= 1
             return (
-                f'<m:f><m:fPr><m:type m:val="bar"/></m:fPr>'
+                f'<m:f><m:fPr><m:type m:val="bar"/>{_CTRL_PR}</m:fPr>'
                 f"<m:num>{numerator}</m:num><m:den>{denominator}</m:den></m:f>"
             )
 
+        if name == "sqrt":
+            body = self._group()
+            return (
+                f"<m:rad><m:radPr><m:degHide m:val=\"1\"/>{_CTRL_PR}</m:radPr>"
+                f"<m:deg/><m:e>{body}</m:e></m:rad>"
+            )
+
         if name == "sum":
-            return self._sum()
+            return self._big_operator("∑")
+
+        if name == "prod":
+            return self._big_operator("∏")
+
+        if name == "int":
+            return self._big_operator("∫")
 
         if name in _ACCENTS:
             accent = _ACCENTS[name]
@@ -315,8 +368,7 @@ class _Parser:
             body = self._group()
             return self._blackboard(body)
 
-        if name in ("mathrm", "text", "operatorname", "log", "ln", "exp", "sin",
-                    "cos", "tan", "max", "min", "arg", "det", "dim", "ker"):
+        if name in _TEXT_COMMANDS:
             # Upright text: the braces contain plain prose, not mathematics.
             if self._peek() == "{":
                 self.i += 1
@@ -326,8 +378,9 @@ class _Parser:
                 literal = self.s[start:self.i]
                 self._expect("}")
             else:
-                literal = self._read_name()
-            return _run(literal, upright=True)
+                # The command name itself is the text, e.g. ``\log``.
+                literal = name
+            return _run(literal, upright=True, size=self.size)
 
         if name == "left":
             return self._left_right()
@@ -337,16 +390,14 @@ class _Parser:
             return ""
 
         # An unknown command is shown as the command name itself.
-        return _run(name)
+        return _run(name, size=self.size)
 
     def _blackboard(self, body: str) -> str:
         """Turn a plain letter group into its blackboard-bold form."""
-        import re as _re
-
-        letters = _re.findall(r"<m:t[^>]*>(.*?)</m:t>", body, _re.S)
+        letters = re.findall(r"<m:t[^>]*>(.*?)</m:t>", body, re.S)
         raw = "".join(letters)
         mapped = "".join(_BLACKBOARD.get(c, c) for c in raw)
-        return _run(mapped)
+        return _run(mapped, size=self.size)
 
     def _left_right(self) -> str:
         """``\\left( ... \\right)`` - a delimiter that grows with its content."""
@@ -385,7 +436,7 @@ class _Parser:
         else:
             closing = {"(": ")", "[": "]"}.get(opening, ".")
 
-        inner = _Parser(content).parse()
+        inner = _Parser(content, self.size).parse()
         return (
             f"<m:d><m:dPr>"
             f'<m:begChr m:val="{opening}"/><m:endChr m:val="{closing}"/>'
@@ -393,7 +444,8 @@ class _Parser:
             f"<m:e>{inner}</m:e></m:d>"
         )
 
-    def _sum(self) -> str:
+    def _big_operator(self, symbol: str) -> str:
+        """A large operator with optional limits above and below it."""
         lower = upper = ""
         while self._peek() in ("_", "^"):
             which = self._peek()
@@ -409,31 +461,46 @@ class _Parser:
         else:
             body = self._term()
 
+        if self.in_fraction:
+            # No room beneath the operator: the limits go beside it, as a
+            # subscript and a superscript, the way LaTeX sets them inside a
+            # fraction.
+            return (
+                f"<m:sSub><m:e>{_run(symbol, size=self.size)}</m:e>"
+                f"<m:sub>{lower}</m:sub></m:sSub>"
+            ) if not upper else (
+                f"<m:sSubSup><m:e>{_run(symbol, size=self.size)}</m:e>"
+                f"<m:sub>{lower}</m:sub><m:sup>{upper}</m:sup></m:sSubSup>"
+            )
+
         sup_hidden = "" if upper else '<m:supHide m:val="1"/>'
         return (
             f"<m:nary><m:naryPr>"
-            f'<m:chr m:val="∑"/><m:limLoc m:val="undOvr"/>'
+            f'<m:chr m:val="{symbol}"/><m:limLoc m:val="undOvr"/>'
             f'<m:subHide m:val="0"/>{sup_hidden}{_CTRL_PR}</m:naryPr>'
             f"<m:sub>{lower}</m:sub><m:sup>{upper}</m:sup>"
             f"<m:e>{body}</m:e></m:nary>"
         )
 
 
-def render_equation(source: str, centered: bool = True) -> str:
-    """Return the ``m:oMathPara`` XML for a display equation."""
-    inner = _Parser(source).parse()
-    justification = '<m:jc m:val="center"/>' if centered else ""
+def render_equation(source: str, size: float = DISPLAY_SIZE) -> str:
+    """Return the ``m:oMath`` XML for a display equation.
+
+    The result is *inline* OMML rather than a block-level ``m:oMathPara``,
+    because a block-level equation cannot share a paragraph with the equation
+    number that a paper would put at the right margin.  The caller centres
+    the equation by placing it in a paragraph with a centred tab stop.
+    """
+    inner = _Parser(source, size).parse()
     return (
-        f'<m:oMathPara xmlns:m="{MATH_NS}" xmlns:w="{WORD_NS}">'
-        f"<m:oMathParaPr>{justification}</m:oMathParaPr>"
-        f"<m:oMath>{inner}</m:oMath>"
-        f"</m:oMathPara>"
+        f'<m:oMath xmlns:m="{MATH_NS}" xmlns:w="{WORD_NS}">'
+        f"{inner}</m:oMath>"
     )
 
 
-def render_inline(source: str) -> str:
+def render_inline(source: str, size: float = INLINE_SIZE) -> str:
     """Return the ``m:oMath`` XML for an equation inside a running paragraph."""
-    inner = _Parser(source).parse()
+    inner = _Parser(source, size).parse()
     return (
         f'<m:oMath xmlns:m="{MATH_NS}" xmlns:w="{WORD_NS}">'
         f"{inner}</m:oMath>"
