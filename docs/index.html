@@ -267,6 +267,19 @@
     width: 100%; height: auto; display: block;
     border: 1px solid var(--line); border-radius: 10px; background: var(--bg-soft);
   }
+  /* The reconstruction grid is a wide figure with twelve columns of
+     small images.  In the reading column each cell would be too small
+     to recognise, so the figure is allowed to run wider than the text
+     on a screen that has the room for it. */
+  @media (min-width: 1180px) {
+    figure.wide { margin-left: -3rem; margin-right: -3rem; }
+  }
+  /* Clicking a figure opens it at its own size, which is the only way to
+     see the individual reconstructions of the grid. */
+  figure.zoomable img { cursor: zoom-in; }
+  figure.zoomable:hover img { border-color: var(--line-strong); }
+  figure.zoomable a { display: block; }
+  figure.zoomable a:focus-visible img { outline: 2px solid var(--accent); outline-offset: 2px; }
   figcaption { color: var(--fg-faint); font-size: 0.85rem; margin-top: 0.5rem; }
   .filelist { list-style: none; padding: 0; margin: 0 0 1.25rem; }
   .filelist li {
@@ -765,10 +778,15 @@ _EPS: float = 1e-12
       published site itself.
     </p>
 
-    <figure>
+    <figure class="wide zoomable">
+      <a href="assets/figures/reconstruction_grid.png" target="_blank"
+         rel="noopener">
       <img src="assets/figures/reconstruction_grid.png"
            alt="Reconstruction grid comparing original images with PCA, autoencoder and POLCA-Net reconstructions">
-      <figcaption>Fig. 1 &mdash; Reconstruction grid (original / PCA / Autoencoder / POLCA-Net):
+      </a>
+      <figcaption>Fig. 1 &mdash; Reconstruction grid (original / PCA / Autoencoder / POLCA-Net).
+        Each group of columns is one dataset and each row one sample; click the figure to open it
+        at full size.
         <code>results/figures/reconstruction_grid.png</code></figcaption>
     </figure>
 

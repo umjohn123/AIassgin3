@@ -237,17 +237,27 @@ def figure_reconstruction_grid(
         print("  ! no cached reconstructions -- skipping reconstruction_grid.png")
         return None
 
-    # --- the actual grid: rows = (dataset, method), cols = samples ------- #
+    # --- the actual grid: rows = samples, cols = dataset x method ------- #
+    # The grid is laid out across rather than down.  A column per dataset
+    # and a row per method keeps the comparison the figure exists for --
+    # the same sample reconstructed by each method, side by side -- in one
+    # glance.  A tall layout with the datasets stacked instead puts the
+    # three methods of a sample three screens apart, and the figure then
+    # does not fit on a page: at the width the report prints it, a grid
+    # twelve rows deep is taller than the sheet, and the lower half of
+    # it is pushed off the paper.
+    n_groups = len(datasets)
+    n_per_group = 1 + len(methods)
     cols = n_samples
-    n_rows = len(datasets) * (1 + len(methods))
-    fig, axes = _fig(n_rows, cols, figsize=(1.25 * cols, 1.3 * n_rows))
+    fig, axes = _fig(n_samples, n_groups * n_per_group,
+                     figsize=(1.15 * n_groups * n_per_group, 1.35 * n_samples))
+    axes = np.atleast_2d(axes)
 
-    row = 0
-    for dataset in datasets:
+    for g, dataset in enumerate(datasets):
         images, _ = _dataset_images(dataset, n=n_samples)
         shape = (8, 8) if dataset == "digits" else (28, 28)
 
-        for method in ["original"] + methods:
+        for mi, method in enumerate(["original"] + methods):
             key = None
             if method != "original":
                 for k in sorted(latents):
@@ -258,37 +268,52 @@ def figure_reconstruction_grid(
                         key = k
                         break
             recon = latents[key] if key is not None else None
+            col = g * n_per_group + mi
 
-            for c in range(cols):
-                ax = axes[row, c]
+            for r in range(n_samples):
+                ax = axes[r, col]
                 ax.set_xticks([])
                 ax.set_yticks([])
                 ax.grid(False)
                 if method == "original":
-                    if c < images.shape[0]:
-                        ax.imshow(images[c].astype(np.float64) / 255.0, cmap="gray", vmin=0, vmax=1)
+                    if r < images.shape[0]:
+                        ax.imshow(images[r].astype(np.float64) / 255.0, cmap="gray", vmin=0, vmax=1)
                     else:
                         ax.axis("off")
-                elif recon is not None and c < recon.shape[0]:
-                    ax.imshow(_to_display_image(recon[c], shape), cmap="gray", vmin=0, vmax=1)
+                elif recon is not None and r < recon.shape[0]:
+                    ax.imshow(_to_display_image(recon[r], shape), cmap="gray", vmin=0, vmax=1)
                 else:
                     ax.axis("off")
-                if c == 0:
+
+                # The method names the column; the row is the sample.
+                if r == 0:
                     label = (
                         "Original"
                         if method == "original"
                         else METHOD_LABELS.get(method, method)
                     )
-                    ax.text(
-                        -0.18,
-                        0.5,
-                        f"{dataset}\n{label}",
-                        transform=ax.transAxes,
-                        ha="right",
-                        va="center",
-                        fontsize=8,
-                    )
-            row += 1
+                    ax.set_title(label, fontsize=8, pad=4)
+                if col == 0:
+                    ax.set_ylabel(f"#{r + 1}", fontsize=8, rotation=0,
+                                  labelpad=14, va="center")
+
+    # The dataset names the group of columns.  The label is placed on the
+    # figure itself, centred on the whole group, because an axis can only
+    # be centred on the column it belongs to.  It is placed after the
+    # tight layout, because the layout changes the positions of the axes.
+    fig.tight_layout()
+    for g, dataset in enumerate(datasets):
+        left = axes[0, g * n_per_group].get_position()
+        right = axes[0, (g + 1) * n_per_group - 1].get_position()
+        fig.text(
+            (left.x0 + right.x1) / 2,
+            left.y1 + 0.03,
+            dataset,
+            ha="center",
+            va="bottom",
+            fontsize=11,
+            fontweight="bold",
+        )
 
     return _save(fig, fig_dir / "reconstruction_grid.png")
 

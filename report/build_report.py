@@ -230,6 +230,35 @@ def _border(paragraph, color: str = "BFBFBF") -> None:
     p_pr.append(borders)
 
 
+def _fit_on_page(path: Path, width_cm: float, max_height_cm: float) -> Tuple[float, float]:
+    """Scale a figure so that it fits the page, keeping its aspect ratio.
+
+    Word does not scale an image that is too tall: it draws the image at
+    the width it was given and lets the bottom of it run off the sheet,
+    where it is lost.  A figure is therefore measured first and scaled
+    down when its height would not fit.
+    """
+    try:
+        from docx.image.image import Image as DocxImage
+
+        image = DocxImage.from_file(str(path))
+        native_w = image.width.cm
+        native_h = image.height.cm
+    except Exception:  # pragma: no cover - fall back to the given width
+        return width_cm, width_cm
+
+    if native_w <= 0 or native_h <= 0:
+        return width_cm, width_cm
+
+    height_cm = width_cm * native_h / native_w
+    if height_cm > max_height_cm:
+        # The figure is too tall for the width it was given, so it is
+        # scaled by its height instead and comes out narrower.
+        height_cm = max_height_cm
+        width_cm = height_cm * native_w / native_h
+    return width_cm, height_cm
+
+
 def _add_field(paragraph, instruction: str) -> None:
     """Insert a Word field (e.g. ``PAGE`` or ``TOC``) into a paragraph."""
     run = paragraph.add_run()
@@ -620,17 +649,30 @@ class ReportWriter:
             self.text_log.append("| " + " | ".join(str(v) for v in row) + " |")
 
     # -- figures ----------------------------------------------------------- #
-    def figure(self, path: Path, caption: str, width_cm: float = 15.5) -> bool:
+    def figure(self, path: Path, caption: str, width_cm: float = 15.5,
+               max_height_cm: float = 20.0) -> bool:
+        """Insert a figure, scaled to fit on the page.
+
+        A figure is scaled down when it is taller than the space the page
+        has left.  Word does not do this by itself: an image that is too
+        tall is simply cut off at the bottom of the sheet, and the part
+        that is missing is lost for good.  The reconstruction grid used to
+        be lost that way, and every figure now keeps its aspect ratio
+        inside the page.
+        """
         if not path or not Path(path).exists():
             self.note(f"[Figure omitted: '{Path(path).name if path else '?'}' was not found "
                       f"in the figures directory.]")
             return False
+
+        width_cm, height_cm = _fit_on_page(path, width_cm, max_height_cm)
+
         p = self.doc.add_paragraph()
         p.alignment = WD_ALIGN_PARAGRAPH.CENTER
         p.paragraph_format.space_before = Pt(6)
         p.paragraph_format.space_after = Pt(2)
         run = p.add_run()
-        run.add_picture(str(path), width=Cm(width_cm))
+        run.add_picture(str(path), width=Cm(width_cm), height=Cm(height_cm))
         self.caption_below(caption)
         return True
 
@@ -2237,9 +2279,11 @@ def build_report(results_dir: Path, figures_dir: Path, out_path: Path,
     )
 
     recon = pick_figure("reconstruction")
-    w.figure(recon, "Reconstruction grid: original images (top row) against the "
+    w.figure(recon, "Reconstruction grid: the original test images against the "
                      "reconstructions produced by the compared methods on the same "
-                     "test samples.", width_cm=15.5)
+                     "test samples. Each group of columns is one dataset and each "
+                     "row one sample, so that the reconstructions of a sample can be "
+                     "compared with it directly.", width_cm=15.5)
 
     orth = pick_figure("orthogonality")
     w.figure(orth, "Latent orthogonality heat map: the absolute Gram matrix of "

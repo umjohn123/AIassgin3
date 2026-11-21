@@ -139,6 +139,18 @@ pdf = (root / "report" / "AI_Assignment3_Report.pdf").read_bytes()
 check("pdf header", pdf[:5] == b"%PDF-")
 check("pdf size > 1MB", len(pdf) > 1024 * 1024, f"{len(pdf)//1024} KB")
 
+# Every figure has to fit on the page.  Word does not scale an image that
+# is too tall: it draws it at the width it was given and lets the bottom
+# run off the sheet, where the missing part is lost for good.  The
+# reconstruction grid used to be lost that way.
+_A4_W, _A4_H = 16.0, 24.7  # A4 minus the 2.5cm margins.
+_too_big = [
+    f"{s.width.cm:.1f}x{s.height.cm:.1f}cm"
+    for s in doc.inline_shapes
+    if s.height.cm > _A4_H or s.width.cm > _A4_W
+]
+check("every figure fits on the page", not _too_big, "; ".join(_too_big))
+
 # A page that carries nothing but the running header and the page number is
 # a blank page: it is produced when a page break is emitted as its own empty
 # paragraph and the preceding content already filled the sheet.  The report
