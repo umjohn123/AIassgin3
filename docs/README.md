@@ -3,9 +3,31 @@
 This folder contains the project page for **CISC3024 Pattern Recognition — AI
 Assignment #3 (POLCA-Net)**.
 
-| File | Purpose |
+| Path | Purpose |
 |---|---|
 | `index.html` | The entire site. Self-contained: inline CSS, no JavaScript, no external fonts, no CDN. It renders correctly with the network disconnected. |
+| `assets/figures/*.png` | The eight report figures, mirrored from `results/figures/`. |
+| `assets/report/` | The report in PDF and in Word, mirrored from `report/`. |
+| `assets/AI_PROMPTS.md` | The prompt log, mirrored from the repository root. |
+
+## Why the `assets/` folder exists
+
+GitHub Pages publishes **only** the selected folder — here `docs/` — as the site
+root. A page inside `docs/` therefore cannot link to `../results/figures/...` or
+`../report/...`: those paths do not exist on the published site, and the links
+would fall back to the raw repository files on `github.com/<user>/<repo>` (or
+break entirely).
+
+`report/sync_site_assets.py` therefore mirrors every referenced asset into
+`docs/assets/` and rewrites the `src` / `href` attributes of `index.html` to
+relative paths (`assets/figures/...`, `assets/report/...`, `assets/AI_PROMPTS.md`).
+The mirrored copies are committed, so the site stays self-contained.
+
+Re-run it whenever the figures or the report change:
+
+```powershell
+python report/sync_site_assets.py
+```
 
 ## Publishing it
 
@@ -14,11 +36,11 @@ GitHub Pages can serve this folder directly — no build step, no Jekyll front m
 
 ### Step 1 — push the folder
 
-Make sure `docs/index.html` is committed and pushed to the default branch:
+Make sure `docs/` is committed and pushed to the default branch:
 
 ```powershell
 git add docs
-git commit -m "docs: add the GitHub Pages project site"
+git commit -m "docs: update the GitHub Pages project site"
 git push origin main
 ```
 
@@ -45,17 +67,12 @@ soon as the deployment succeeds.
 
 ## Notes
 
-- The page uses **relative paths** for everything it links to: the report at
-  `../report/AI_Assignment3_Report.pdf` and `../report/AI_Assignment3_Report.docx`, the
-  prompt log at `../AI_PROMPTS.md`, and the figures at
-  `../results/figures/*.png`. Because Pages publishes the `docs/` folder as the site
-  root, `../` escapes the published root and those links resolve to the raw repository
-  files on `github.com/<user>/<repo>` rather than to the Pages site. If you want the
-  figures and the report to be served from the site itself, copy them into `docs/` (for
-  example `docs/figures/` and `docs/report/`) and update the `src`/`href` attributes
-  accordingly.
-- The metrics tables on the page are intentionally filled with placeholders (`—`).
-  They are populated from `results/metrics.csv` once the experiment run has completed;
-  the numbers in the submitted report are read from the same files.
+- Every path on the page is **relative to `docs/`**, so the site renders identically
+  whether it is opened from a local web server, from the published Pages URL, or
+  straight from the file system.
+- The metrics table is regenerated from `results/metrics.csv` by
+  `report/update_site_results.py`; a cell shows an em dash when the corresponding
+  measurement is not present in the result file, so the page can never display a
+  number that was not measured.
 - The page adapts to the operating system's light or dark appearance via
   `prefers-color-scheme`, and collapses to a single column below 760 px.

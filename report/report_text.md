@@ -163,6 +163,12 @@ The repository produced by the agent has the following layout. The complete tree
 ```
 AIassgin3/
 |-- docs/
+|   |-- assets/
+|   |   |-- figures/
+|   |   |-- report/
+|   |   |   |-- AI_Assignment3_Report.docx  (1182 KB, omitted)
+|   |   |   `-- AI_Assignment3_Report.pdf  (1527 KB, omitted)
+|   |   `-- AI_PROMPTS.md
 |   |-- .gitkeep
 |   |-- index.html
 |   `-- README.md
@@ -172,11 +178,13 @@ AIassgin3/
 |-- report/
 |   |-- figures/
 |   |-- .gitkeep
-|   |-- AI_Assignment3_Report.docx  (599 KB, omitted)
-|   |-- AI_Assignment3_Report.pdf  (888 KB, omitted)
+|   |-- AI_Assignment3_Report.docx  (1182 KB, omitted)
+|   |-- AI_Assignment3_Report.pdf  (1527 KB, omitted)
 |   |-- build_report.py
 |   |-- docx_to_pdf.py
+|   |-- report_text.md
 |   |-- site_config.json
+|   |-- sync_site_assets.py
 |   `-- update_site_results.py
 |-- requirement/
 |   |-- AIassign3.pdf
@@ -233,7 +241,10 @@ AIassgin3/
 |-- .gitattributes
 |-- .gitignore
 |-- AI_PROMPTS.md
+|-- build_out.txt
+|-- err.txt
 |-- merge_results.py
+|-- out.txt
 |-- README.md
 |-- requirements.txt
 |-- run_all.py
@@ -641,7 +652,8 @@ The steps below produce the URL that appears at the beginning of this section. T
   4. Rebuild the report so that Section 6 carries the real link: python report/build_report.py, followed by python report/docx_to_pdf.py to regenerate the PDF.
 
 6.3 Layout of the published code
-The repository mirrors the structure of the project: the src/ directory contains the POLCA Net implementation and the evaluation pipeline, experiments/ contains the run configurations, results/ contains the metric tables and the figures, tests/ contains the verification and smoke-test suites, docs/ contains the GitHub Pages source, and report/ contains the script that generated this document together with its output. AI_PROMPTS.md at the root records the complete prompt history behind every one of those artefacts.
+The repository mirrors the structure of the project: the src/ directory contains the POLCA Net implementation and the evaluation pipeline, results/ contains the metric tables and the figures, tests/ contains the verification and smoke-test suites, docs/ contains the GitHub Pages source, and report/ contains the script that generated this document together with its output. AI_PROMPTS.md at the root records the complete prompt history behind every one of those artefacts.
+One detail of the publication is worth stating because it is easy to get wrong. GitHub Pages serves only the selected folder - here docs/ - as the root of the site, so a page inside docs/ cannot link to ../results or ../report: those paths do not exist on the published site. The figures, this report and the prompt log are therefore mirrored into docs/assets/ by report/sync_site_assets.py, which also rewrites the links of the page to relative paths. The mirror is committed, so the site stays self-contained and renders identically online, offline and straight from the file system.
 
 6.4 Cloning and running the project
 The project is a standard Python package with a flat module layout; it does not require installation, only that the repository root is on the Python path. The commands below reproduce the full pipeline from a fresh clone.

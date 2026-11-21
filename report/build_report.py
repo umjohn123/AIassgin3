@@ -2298,12 +2298,22 @@ def build_report(results_dir: Path, figures_dir: Path, out_path: Path,
     w.body(
         "The repository mirrors the structure of the project: the src/ directory "
         "contains the POLCA Net implementation and the evaluation pipeline, "
-        "experiments/ contains the run configurations, results/ contains the "
-        "metric tables and the figures, tests/ contains the verification and "
-        "smoke-test suites, docs/ contains the GitHub Pages source, and report/ "
-        "contains the script that generated this document together with its "
-        "output. AI_PROMPTS.md at the root records the complete prompt history "
-        "behind every one of those artefacts."
+        "results/ contains the metric tables and the figures, tests/ contains the "
+        "verification and smoke-test suites, docs/ contains the GitHub Pages "
+        "source, and report/ contains the script that generated this document "
+        "together with its output. AI_PROMPTS.md at the root records the complete "
+        "prompt history behind every one of those artefacts."
+    )
+    w.body(
+        "One detail of the publication is worth stating because it is easy to get "
+        "wrong. GitHub Pages serves only the selected folder - here docs/ - as the "
+        "root of the site, so a page inside docs/ cannot link to ../results or "
+        "../report: those paths do not exist on the published site. The figures, "
+        "this report and the prompt log are therefore mirrored into docs/assets/ "
+        "by report/sync_site_assets.py, which also rewrites the links of the page "
+        "to relative paths. The mirror is committed, so the site stays "
+        "self-contained and renders identically online, offline and straight from "
+        "the file system."
     )
 
     w.h2("6.4 Cloning and running the project")

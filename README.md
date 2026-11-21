@@ -202,6 +202,14 @@ The project page lives in `docs/` and is a **single self-contained HTML file** �
 build step, no external CDN, no web fonts — so it renders identically online and
 offline.
 
+GitHub Pages publishes only the `docs/` folder as the site root, so the figures, the
+report and the prompt log that the page links to are mirrored into `docs/assets/`
+before publishing. Regenerate that mirror whenever the figures or the report change:
+
+```powershell
+python report/sync_site_assets.py
+```
+
 1. Push the repository to GitHub with the `docs/` folder committed.
 2. Go to **Settings → Pages**.
 3. Under **Build and deployment → Source**, choose **Deploy from a branch**.
@@ -221,6 +229,7 @@ See [`docs/README.md`](docs/README.md) for the longer version of these instructi
 |---|---|
 | [`AI_PROMPTS.md`](AI_PROMPTS.md) | Verbatim log of every AI prompt, what was accepted and what was corrected — the raw material for report Sections 1, 3 and 5 |
 | [`docs/index.html`](docs/index.html) | The GitHub Pages project site: algorithm, repository tree, source showcase, experiments, results, report links |
+| [`docs/assets/`](docs/assets/) | The figures, the report and the prompt log mirrored into the site so that every link resolves on GitHub Pages |
 | [`docs/README.md`](docs/README.md) | How to publish `docs/` as GitHub Pages |
 | [`report/`](report/) | `build_report.py` plus the generated `.docx` and `.pdf` |
 
