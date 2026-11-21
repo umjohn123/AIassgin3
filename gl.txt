@@ -1,0 +1,12 @@
+614e391 Pair the originals with the reconstructions in the reconstruction grid
+d5df5df Rebuild the report documents
+## main...origin/main
+ M docs/assets/report/AI_Assignment3_Report.docx
+ M docs/assets/report/AI_Assignment3_Report.pdf
+ M docs/index.html
+ M report/AI_Assignment3_Report.docx
+ M report/AI_Assignment3_Report.pdf
+ M report/build_report.py
+ M report/report_text.md
+ M tests/final_audit.py
+?? gl.txt

@@ -217,6 +217,55 @@ _too_big = [
 ]
 check("every figure fits on the page", not _too_big, "; ".join(_too_big))
 
+# Every figure that was generated has to end up in the report, and no
+# figure may be inserted twice.  The report once showed the orthogonality
+# heat map under two different captions: the figure search looked for
+# "latent" before "scatter", and the heat map -- whose name also contains
+# "latent" -- was found first.  The scatter plot was never used at all.
+# The embedded images are compared with the generated ones by content, so
+# the check catches both a missing and a duplicated figure.
+try:
+    import hashlib
+    import zipfile
+
+    _generated = {}
+    for _p in sorted((root / "results" / "figures").glob("*.png")):
+        _generated[hashlib.md5(_p.read_bytes()).hexdigest()] = _p.name
+
+    _embedded = []
+    with zipfile.ZipFile(root / "report" / "AI_Assignment3_Report.docx") as _zip:
+        for _name in sorted(_zip.namelist()):
+            if _name.startswith("word/media/"):
+                _embedded.append(
+                    hashlib.md5(_zip.read(_name)).hexdigest()
+                )
+
+    _embedded_counts = {}
+    for _h in _embedded:
+        _embedded_counts[_h] = _embedded_counts.get(_h, 0) + 1
+
+    _missing = sorted(
+        _generated[h] for h in _generated if _embedded_counts.get(h, 0) == 0
+    )
+    _duplicated = sorted(
+        _generated[h]
+        for h in _generated
+        if h in _embedded_counts and _embedded_counts[h] > 1
+    )
+    check(
+        "every generated figure is in the report",
+        not _missing,
+        "missing: " + ", ".join(_missing) if _missing else "",
+    )
+    check(
+        "no figure is inserted twice",
+        not _duplicated,
+        "duplicated: " + ", ".join(_duplicated) if _duplicated else "",
+    )
+except Exception as exc:  # pragma: no cover
+    check("every generated figure is in the report", False, str(exc))
+    check("no figure is inserted twice", False, str(exc))
+
 # A page that carries nothing but the running header and the page number is
 # a blank page: it is produced when a page break is emitted as its own empty
 # paragraph and the preceding content already filled the sheet.  The report

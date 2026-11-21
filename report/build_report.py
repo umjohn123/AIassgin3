@@ -1223,9 +1223,19 @@ def build_report(results_dir: Path, figures_dir: Path, out_path: Path,
     fig_files = {p.name.lower(): p for p in sorted(figures_dir.glob("*.png"))} if figures_dir.exists() else {}
 
     def pick_figure(*keywords: str) -> Optional[Path]:
-        """Find a figure whose name contains any of the keywords."""
-        for key in fig_files:
-            for kw in keywords:
+        """Find a figure whose name contains any of the keywords.
+
+        The keywords are tried in the order they are given, so a more
+        specific one has to come first.  The order matters: the files
+        are scanned in alphabetical order, and ``latent_orthogonality``
+        comes before ``latent_scatter``, so a search for "latent" that
+        reached it before the search for "scatter" would return the
+        heat map -- and the scatter plot would never be used, so two
+        figures in the report would show the same picture under
+        different captions.
+        """
+        for kw in keywords:
+            for key in fig_files:
                 if kw in key:
                     return fig_files[key]
         return None
@@ -2298,8 +2308,11 @@ def build_report(results_dir: Path, figures_dir: Path, out_path: Path,
                    "component index.")
 
     scat = pick_figure("scatter", "latent")
-    w.figure(scat, "Two-dimensional latent embedding of the digit dataset with "
-                    "the class labels indicated.")
+    w.figure(scat, "Two-dimensional latent embedding of the three datasets, "
+                    "coloured by class, for the PCA and POLCA-Net latent spaces. "
+                    "The first two latent dimensions are plotted for a sample of "
+                    "the test split, so the class separation of the latent space "
+                    "can be read directly.")
 
     cls = pick_figure("classification", "metric")
     w.figure(cls, "Downstream classification quality of the latent spaces across "
