@@ -62,16 +62,20 @@ AIassgin3/
 │   │   ├── model.py        # POLCANet + the plain Autoencoder baseline
 │   │   ├── data.py         # digits / MNIST / FashionMNIST loaders
 │   │   └── utils.py        # seeding, device selection, logging
-│   ├── baselines.py        # PCAEncoder, LDAEncoder, autoencoder baseline
+│   ├── baselines.py        # PCA, LDA and plain-autoencoder baselines
 │   ├── metrics.py          # NRMSE, PSNR, SSIM, orthogonality, variance ordering
 │   ├── train.py            # training loop + ablation switches
-│   ├── evaluate.py         # four linear classifiers, Accuracy / F1, tidy CSV
-│   └── make_figures.py     # all plots
+│   ├── evaluate.py         # benchmark driver, four linear classifiers, tidy CSV
+│   └── make_figures.py     # all eight report figures
 ├── tests/
-│   └── smoke_test.py       # shape, orthogonality and variance-ordering assertions
-├── results/                # metrics.csv, summary.json, figures/
-├── report/                 # build_report.py + the .docx / .pdf report
-├── docs/                   # this GitHub Pages site (index.html)
+│   ├── smoke_test.py       # shape, orthogonality and variance-ordering assertions
+│   └── test_pipeline.py    # end-to-end evaluation and figure generation
+├── experiments/config.json # the run configuration used for the reported results
+├── results/                # metrics.csv, metrics.json, summary.md, ablation.csv, figures/
+├── report/                 # build_report.py, docx_to_pdf.py + the .docx / .pdf report
+├── docs/                   # the GitHub Pages site (index.html)
+├── run_all.py              # evaluate the three datasets (two waves)
+├── merge_results.py        # merge the per-dataset bundles back into results/
 ├── AI_PROMPTS.md           # full prompt log for the whole assignment
 ├── requirements.txt
 └── README.md
@@ -100,43 +104,61 @@ python tests/smoke_test.py
 ### Train POLCA-Net
 
 ```powershell
-python src/train.py --dataset digits --latent-dim 16 --updates 20000 --seed 5 --out results/runs/polca_digits_s5
+python src/train.py --dataset digits --latent-dim 8 --max-updates 20000 --seed 5 --out-dir results/runs/polca_digits_s5
 ```
 
 Useful switches:
 
 | Flag | Meaning |
 |---|---|
-| `--dataset {digits,mnist,fashion_mnist}` | which dataset to train on |
-| `--latent-dim` | latent dimensionality `n` (default 16) |
-| `--updates` | number of gradient updates (default 20000) |
+| `--dataset {digits,mnist,fashion}` | which dataset to train on |
+| `--latent-dim` | latent dimensionality `n` (default 8) |
+| `--hidden-dims` | encoder hidden widths (default `64 32`) |
+| `--epochs` | number of passes over the training set (default 50) |
+| `--max-updates` | stop after this many gradient updates (the paper uses 20000); overrides `--epochs` |
 | `--batch-size` | default 64 |
 | `--lr` | Adam learning rate (default 1e-3) |
 | `--alpha / --beta / --gamma` | loss weights (1e-2 / 1e-2 / 1e-7) |
 | `--supervised` | add the `L_class` term (LDA-style mode) |
-| `--ablate {none,ort,com,var}` | remove one loss term for the ablation study |
+| `--no-ort / --no-com / --no-var` | ablate one loss term for the ablation study |
+| `--linear-decoder` | use the paper's optional linear decoder |
 | `--seed` | random seed (default 5) |
-| `--device {auto,cpu,cuda}` | device selection |
+| `--device {cpu,cuda}` | device selection (defaults to CUDA when available) |
 
 ### Evaluate and reproduce the results
 
 ```powershell
-python src/evaluate.py --dataset digits --out results
-python src/make_figures.py --results results --out results/figures
+# the full matrix: three datasets x three seeds x five methods + the ablation
+python src/evaluate.py --datasets digits mnist fashion --seeds 5 6 7 --max-updates 10000 --out-dir results
+python src/make_figures.py --out-dir results
 ```
 
-`src/evaluate.py` writes a tidy `results/metrics.csv` (one row per dataset × method)
-and a `results/summary.json`. The full matrix used in the report is reproduced with:
+`src/evaluate.py` writes a tidy `results/metrics.csv` (one row per dataset × method ×
+seed × classifier), an aggregated `results/metrics.json`, a human-readable
+`results/summary.md` and the ablation table `results/ablation.csv`.
+
+On a 16 GB machine the three datasets cannot be evaluated concurrently (the LDA and
+autoencoder baselines each hold several float64 copies of the 60000 × 784 design
+matrix), so `run_all.py` and `run_large.py` evaluate them in two waves and
+`merge_results.py` merges the per-dataset bundles back into `results/`:
 
 ```powershell
-foreach ($seed in 5, 6, 7) {
-    python src/train.py --dataset digits --seed $seed --out "results/runs/polca_digits_s$seed"
-}
-python src/evaluate.py --dataset digits --seeds 5,6,7 --out results
-python src/make_figures.py --results results --out results/figures
+python run_all.py          # digits, then mnist + fashion
+python merge_results.py
+python src/make_figures.py --out-dir results
 ```
 
-Repeat the same three commands for `--dataset mnist` and `--dataset fashion_mnist`.
+`run_large.py` starts the MNIST and FashionMNIST runs as **detached** processes, so
+they keep running even when the shell that launched them is closed, and the raw
+stdout of every run is kept in `results/run_<dataset>.log`.
+
+The project site carries the same numbers as the report; regenerate its results
+table from the metric file with:
+
+```powershell
+python report/update_site_results.py
+```
+
 MNIST and FashionMNIST are downloaded once by torchvision into `data/` and cached
 there; `digits` needs no network access at all.
 
@@ -144,7 +166,8 @@ there; `digits` needs no network access at all.
 
 ```powershell
 pip install python-docx pywin32
-python report/build_report.py --results results --out report/AI_Assignment3_Report.docx
+python report/build_report.py
+python report/docx_to_pdf.py
 ```
 
 The PDF is exported from the `.docx` with Microsoft Word via COM automation

@@ -125,6 +125,10 @@
   th { background: var(--bg-soft); font-weight: 600; }
   tbody tr:nth-child(even) { background: var(--bg-soft); }
   td.num { font-variant-numeric: tabular-nums; }
+  tr.rowhead th {
+    background: var(--bg-code); text-align: left; letter-spacing: 0.02em;
+    font-size: 0.85rem; padding-top: 0.6rem; padding-bottom: 0.4rem;
+  }
   pre {
     background: var(--bg-code); border: 1px solid var(--line); border-radius: 10px;
     padding: 0.9rem 1rem; overflow-x: auto; font-size: 0.83rem; line-height: 1.55;
@@ -582,13 +586,15 @@ _EPS: float = 1e-12
   <section id="results">
     <h2>Results</h2>
     <p>
-      The table below is generated from <code>results/metrics.csv</code>. Placeholder
-      cells are shown as an em dash and are filled with the measured values once the
-      experiment run completes; nothing in this repository is an invented number.
+      The table below is generated from <code>results/metrics.csv</code> by
+      <code>report/update_site_results.py</code>. A cell is shown as an em dash when the
+      corresponding measurement is not present in the result file; nothing in this
+      repository is an invented number.
     </p>
 
+    <!-- BEGIN RESULTS TABLE -->
     <table>
-      <caption>Reconstruction and classification metrics on <code>digits</code> (mean &plusmn; std over three seeds).</caption>
+      <caption>Reconstruction and classification metrics on the test split (mean over the seeds and over the four linear classifiers). Every value is read from <code>results/metrics.csv</code>.</caption>
       <thead>
         <tr>
           <th>Method</th>
@@ -600,15 +606,15 @@ _EPS: float = 1e-12
         </tr>
       </thead>
       <tbody>
-        <tr><td>PCA (k = 8)</td><td class="num">&mdash;</td><td class="num">&mdash;</td><td class="num">&mdash;</td><td class="num">&mdash;</td><td class="num">&mdash;</td></tr>
-        <tr><td>PCA (k = 16)</td><td class="num">&mdash;</td><td class="num">&mdash;</td><td class="num">&mdash;</td><td class="num">&mdash;</td><td class="num">&mdash;</td></tr>
-        <tr><td>PCA (k = 32)</td><td class="num">&mdash;</td><td class="num">&mdash;</td><td class="num">&mdash;</td><td class="num">&mdash;</td><td class="num">&mdash;</td></tr>
-        <tr><td>LDA</td><td class="num">&mdash;</td><td class="num">&mdash;</td><td class="num">&mdash;</td><td class="num">&mdash;</td><td class="num">&mdash;</td></tr>
-        <tr><td>Autoencoder</td><td class="num">&mdash;</td><td class="num">&mdash;</td><td class="num">&mdash;</td><td class="num">&mdash;</td><td class="num">&mdash;</td></tr>
-        <tr><td><strong>POLCA-Net</strong></td><td class="num">&mdash;</td><td class="num">&mdash;</td><td class="num">&mdash;</td><td class="num">&mdash;</td><td class="num">&mdash;</td></tr>
-        <tr><td><strong>POLCA-Net + <code>L_class</code></strong></td><td class="num">&mdash;</td><td class="num">&mdash;</td><td class="num">&mdash;</td><td class="num">&mdash;</td><td class="num">&mdash;</td></tr>
+        <tr class="rowhead"><th colspan="6">digits</th></tr>
+        <tr><td>PCA</td><td class="num">0.1554</td><td class="num">16.17</td><td class="num">0.6788</td><td class="num">0.8737</td><td class="num">0.8660</td></tr>
+        <tr><td>LDA</td><td class="num">0.3277</td><td class="num">9.70</td><td class="num">0.4265</td><td class="num">0.9183</td><td class="num">0.9143</td></tr>
+        <tr><td>Autoencoder</td><td class="num">0.1183</td><td class="num">18.54</td><td class="num">0.7684</td><td class="num">0.8661</td><td class="num">0.8547</td></tr>
+        <tr><td><strong>POLCA-Net</strong></td><td class="num">0.1284</td><td class="num">17.83</td><td class="num">0.7477</td><td class="num">0.8076</td><td class="num">0.7956</td></tr>
+        <tr><td><strong>POLCA-Net + <code>L_class</code></strong></td><td class="num">0.1312</td><td class="num">17.64</td><td class="num">0.7397</td><td class="num">0.9485</td><td class="num">0.9470</td></tr>
       </tbody>
     </table>
+<!-- END RESULTS TABLE -->
 
     <div class="note">
       <strong>Reported by the authors.</strong> In arXiv:2410.07289 the authors report that

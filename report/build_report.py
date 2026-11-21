@@ -1597,6 +1597,34 @@ def build_report(results_dir: Path, figures_dir: Path, out_path: Path,
         "formulation. The convention was therefore documented explicitly instead "
         "of silently changed, and it is reported in Section 4 as an implementation "
         "note.",
+        "A library argument that silently changes the meaning of a metric. The "
+        "reference implementation of the structural similarity index was called "
+        "with channel_axis = -1 on single-channel 28 x 28 images. On such an "
+        "image that argument does not select an image channel - it declares that "
+        "the last axis contains 28 separate channels, so the function computes "
+        "the similarity of the 28 one-dimensional rows of the digit and averages "
+        "the results. The value it returns is a plausible-looking SSIM, the "
+        "pipeline raises no error, and the number is simply not the SSIM of the "
+        "image. The defect was invisible to every other check because nothing "
+        "else in the pipeline compares a metric against a reference. It was "
+        "found only because the metric was re-implemented in a vectorised form "
+        "for performance reasons and the two were compared against each other: "
+        "the vectorised version agrees with the reference implementation, "
+        "invoked without the channel argument, to within 1e-16, whereas the "
+        "original value differs from it by about 1.3e-2. The call site was "
+        "corrected, the vectorised implementation was kept, and a regression "
+        "test now asserts both the agreement with the reference and the fact "
+        "that the channel_axis variant yields a different number, so that the "
+        "misuse cannot return unnoticed.",
+        "An experiment harness that exhausted the machine's memory. The "
+        "evaluation script cached the training-split reconstructions - a "
+        "48000 x 784 float64 array, roughly 300 MB - for every method and "
+        "every seed, which is about 4.5 GB of live arrays on a 15.6 GB machine. "
+        "The two large-dataset runs were killed by the operating system after "
+        "four methods and produced no result file, without a Python traceback. "
+        "The cache now holds only the test-split latents, reconstructions and "
+        "labels, stored as float32; the metric values themselves are still "
+        "computed on float64 data, so no measurement is affected.",
     ])
     w.body(
         "The pattern that these defects share is the reason the loop was structured "
@@ -1648,7 +1676,7 @@ def build_report(results_dir: Path, figures_dir: Path, out_path: Path,
          "Train / test split"],
         [
             ["digits", "scikit-learn load_digits (offline)", "1 797", "64 (8 x 8)",
-             "10", "80 / 20 (1 437 / 360)"],
+             "10", "80 / 20 (1 438 / 359)"],
             ["MNIST", "torchvision.datasets.MNIST", "70 000", "784 (28 x 28)",
              "10", "60 000 / 10 000 (official split)"],
             ["FashionMNIST", "torchvision.datasets.FashionMNIST", "70 000",
@@ -2025,9 +2053,25 @@ def build_report(results_dir: Path, figures_dir: Path, out_path: Path,
         "The second category is silent API mismatch. The LDA baseline could not be "
         "configured in the way the objective required under the default solver, "
         "and the torch/torchvision cache directory resolved to a different path "
-        "from the one the downloader wrote to. In both cases the agent produced "
-        "code that was syntactically and structurally correct and semantically "
-        "wrong. The third category is fabricated or over-confident content: the "
+        "from the one the downloader wrote to. The sharpest instance of this "
+        "category was found late, and it deserves to be named explicitly: the "
+        "reference implementation of the structural similarity index was called "
+        "with channel_axis = -1 on single-channel images, which does not select "
+        "a channel but declares that the last axis holds twenty-eight separate "
+        "channels. The function therefore computed the similarity of the rows of "
+        "each digit rather than the similarity of the digit, and returned a "
+        "perfectly plausible SSIM value. Nothing in the pipeline raised an "
+        "error, the loss curves were unaffected, and the number was wrong. It was "
+        "found only because the metric was re-implemented for performance reasons "
+        "and the two implementations were compared against each other and "
+        "against the reference; the re-implementation agreed with the reference "
+        "to 1e-16 while the original call differed by 1.3e-2. The generalisable "
+        "point is that a passing library argument is not a verified library "
+        "argument, and that a metric must be validated against a reference "
+        "implementation, not merely against the shape of its output. In both "
+        "cases the agent produced code that was syntactically and structurally "
+        "correct and semantically wrong. The third category is fabricated or "
+        "over-confident content: the "
         "claim that Deep Factorized Metric Learning contains an orthogonality "
         "constraint, and the first-draft summary that POLCA Net beat PCA on every "
         "metric on every dataset. The latter was an over-generalisation that "

@@ -31,6 +31,7 @@ agent was wrong, the correction is recorded as a correction, not hidden.
 | 6 | Experiment execution and result validation | `results/**` |
 | 7 | Report writing | `report/AI_Assignment3_Report.docx/.pdf` |
 | 8 | Limitations, hallucinations, human checks | Report Section 5 |
+| 9 | Final audit of the metrics and the experiment harness | Corrected `src/metrics.py`, `src/evaluate.py` |
 
 Prompts are shown verbatim in fenced blocks. Where the human student intervened, the
 intervention is marked with `[HUMAN]`.
@@ -818,6 +819,102 @@ No self-congratulation. Concrete and falsifiable.
 
 ---
 
+## Stage 9 — Final audit of the metrics and of the experiment harness
+
+The first full run of the large datasets stalled after four methods and left two empty
+result files. Rather than re-running it blindly, the agent was asked to diagnose the
+run and to profile it first.
+
+### Prompt 9.1 (diagnose the stalled run)
+
+```text
+The mnist and fashion runs stopped after four methods and wrote no metrics.csv.
+Before re-running anything, find out why. Check whether the python processes are still
+alive, look at the raw stdout of the runs, and measure the available RAM. Then tell me:
+ 1. why the run died;
+ 2. where the time actually goes (the per-method timings are printed - break them down);
+ 3. what the peak memory of one method is, and which array dominates it.
+Do not change any code yet. Report the numbers first.
+```
+
+### AI response (summary)
+
+* The processes were gone; the logs ended mid-method (`method=polca_sup ...` with no
+  result line and no traceback), which is the signature of an **out-of-memory kill**
+  rather than of a Python exception.
+* Timing: PCA on MNIST took **299.6 s**, LDA 446.9 s, the autoencoder 346.7 s and
+  POLCA 481.9 s. Profiling `src/metrics.py` on the real 9600-image test split showed
+  that `nrmse` and `psnr` cost ~0.14 s each but **`ssim` cost 30.5 s** — and `ssim`
+  is called twice per method (train split and test split). The SSIM metric alone
+  accounted for ~60 s of every method, and the *reference* implementation was being
+  called **once per image in a Python loop**.
+* Memory: `src/evaluate.py` stored `recon_train` (48000 x 784 float64 ≈ 300 MB) and
+  `z_train` in its artefact cache for **every method and every seed**. With five
+  methods and three seeds that is ~4.5 GB of live arrays on a machine with 15.6 GB
+  total and ~3.9 GB free.
+
+### Prompt 9.2 (fix the metrics and the memory)
+
+```text
+Fix both problems, but do not change the *definition* of any metric:
+
+ 1. ssim: keep the exact same definition as the scikit-image reference implementation
+    (skimage.metrics.structural_similarity, uniform 7x7 window, NP/(NP-1) sample
+    covariance, border cropped by win_size//2), but compute it for the whole batch in
+    one vectorised call instead of looping over the images in Python. Then PROVE that
+    the new implementation agrees with the reference: for a random batch of 28x28
+    images print the old value, the new value and their difference, and assert that
+    they agree to within 1e-10.
+ 2. Also check the reference call itself for a subtle misuse of the API - look at how
+    the reference function is invoked and whether every argument means what it appears
+    to mean for a SINGLE-CHANNEL image.
+ 3. Memory: the figures only need the test-split latents, reconstructions and labels.
+    Drop the train-split artefacts from the cache and store the arrays as float32.
+    The metric values must still be computed on the float64 data.
+
+Then re-run the three datasets in parallel as DETACHED processes, so that they survive
+the death of the shell that started them, and re-run the whole test suite.
+```
+
+### AI response (summary)
+
+**The subtle API misuse was the more serious of the two findings.** The reference
+implementation was being called as
+
+```python
+sk_ssim(o[i], r[i], data_range=1.0, channel_axis=-1)
+```
+
+On a **single-channel** 28x28 image, `channel_axis=-1` tells scikit-image that the last
+axis holds *channels*, so it does not compute the SSIM of the image at all — it
+computes the SSIM of 28 separate one-dimensional signals (the rows of the digit) and
+averages those. The number it returns is a plausible-looking SSIM, the pipeline runs
+without any error, the loss curves look fine, and the value is simply **not the SSIM of
+the image**. The vectorised implementation was written without `channel_axis` and
+reproduces the correct reference value to `1.1e-16`; the old value differs from the
+correct one by `1.3e-2` on the same data. The call site was corrected and a regression
+test (`test_ssim_matches_skimage`) was added that asserts both the agreement with the
+reference *and* that the `channel_axis=-1` variant gives a different number, so the
+misuse cannot come back unnoticed.
+
+The vectorised implementation uses `scipy.ndimage.uniform_filter` with the same
+`NP/(NP-1)` covariance normalisation and the same border cropping as the reference.
+On the 9600-image MNIST test split it runs in **0.005 s** instead of 30.5 s — a ~6000x
+speed-up — which is what made the whole matrix reproducible in a reasonable time.
+The self-contained Gaussian fallback was also rewritten to use a separable filter
+(`O(N*H*W*k)` instead of `O(N*H*W*k*k)`).
+
+The memory fix removed the train-split artefacts from the cache, switched the stored
+arrays to float32 and left the metric computation on float64. The whole test suite
+(6 tests, including the new SSIM regression test) passes.
+
+**Corrected by the human:** the agent's first instinct was to keep the `channel_axis=-1`
+call and simply vectorise around it. `[HUMAN]` "Don't just make it faster - check that
+the number it computes is the SSIM of the image." That instruction is what turned a
+performance fix into a correctness fix.
+
+---
+
 ## Appendix A — Where each prompt landed in the report
 
 | Stage | Report section | Artefact produced |
@@ -831,6 +928,7 @@ No self-congratulation. Concrete and falsifiable.
 | 6 | 4 | `results/**` |
 | 7 | 4, 6 | `report/build_report.py`, `.docx`, `.pdf` |
 | 8 | 5 | Limitations text |
+| 9 | 3, 4, 5 | Corrected `src/metrics.py`, `src/evaluate.py`, `tests/test_pipeline.py` |
 | — | 6 | `docs/index.html` (this repository's project page) |
 
 ## Appendix B — Prompt statistics
@@ -846,7 +944,8 @@ No self-congratulation. Concrete and falsifiable.
 | 6 | 2 | 1 | — |
 | 7 | 1 | 1 | — |
 | 8 | 1 | 0 | — |
-| **Total** | **24** | **7** | **5** |
+| 9 | 2 | 1 | 2 (silent SSIM misuse, OOM) |
+| **Total** | **26** | **8** | **7** |
 
 ---
 

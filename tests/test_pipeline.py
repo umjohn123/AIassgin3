@@ -30,7 +30,7 @@ if str(_REPO_ROOT) not in sys.path:
 
 import torch  # noqa: E402
 
-from src.metrics import orthogonality_error  # noqa: E402
+from src.metrics import orthogonality_error, ssim  # noqa: E402
 from src.polca.data import get_dataset, train_test_split_idx  # noqa: E402
 from src.polca.losses import polca_loss  # noqa: E402
 from src.polca.model import POLCANet  # noqa: E402
@@ -41,6 +41,7 @@ __all__ = [
     "test_ablation_flags_change_loss",
     "test_digits_dataset_shapes",
     "test_orthogonality_of_orthonormal_set",
+    "test_ssim_matches_skimage",
     "test_end_to_end_evaluation",
     "main",
 ]
@@ -206,7 +207,57 @@ def test_orthogonality_of_orthonormal_set() -> None:
 
 
 # --------------------------------------------------------------------------- #
-# 5. End-to-end evaluation
+# 5. The SSIM metric matches the scikit-image reference implementation
+# --------------------------------------------------------------------------- #
+def test_ssim_matches_skimage() -> None:
+    """``ssim`` must agree with ``skimage`` and must not treat rows as channels.
+
+    The vectorised implementation in :mod:`src.metrics` has to reproduce the
+    reference implementation bit for bit.  The second part of the test
+    guards against the ``channel_axis=-1`` mistake: on single-channel images
+    that argument makes scikit-image compute the SSIM of the *rows* instead
+    of the images, which silently yields a very different number.
+    """
+    rng = np.random.RandomState(0)
+    x = rng.rand(12, 28, 28).astype(np.float64)
+    y = np.clip(x + rng.normal(0.0, 0.1, x.shape), 0.0, 1.0)
+
+    value = ssim(x, y, data_range=1.0)
+    assert 0.0 <= value <= 1.0, f"SSIM out of range: {value}"
+
+    try:
+        from skimage.metrics import structural_similarity as sk_ssim
+    except Exception:  # pragma: no cover - skimage is optional
+        print("  ok: SSIM is in range (scikit-image not installed)")
+        return
+
+    reference = float(
+        np.mean(
+            [sk_ssim(x[i], y[i], data_range=1.0) for i in range(x.shape[0])]
+        )
+    )
+    assert abs(value - reference) < 1e-10, (
+        f"the vectorised SSIM ({value:.12f}) does not match the reference "
+        f"implementation ({reference:.12f})"
+    )
+
+    # the "rows as channels" variant must give a clearly different number
+    wrong = float(
+        np.mean(
+            [
+                sk_ssim(x[i], y[i], data_range=1.0, channel_axis=-1)
+                for i in range(x.shape[0])
+            ]
+        )
+    )
+    assert abs(wrong - reference) > 1e-3, (
+        "the channel_axis=-1 variant should differ from the correct SSIM"
+    )
+    print(f"  ok: the SSIM matches scikit-image ({value:.6f})")
+
+
+# --------------------------------------------------------------------------- #
+# 6. End-to-end evaluation
 # --------------------------------------------------------------------------- #
 def test_end_to_end_evaluation() -> None:
     """A tiny evaluation must write every result file."""
@@ -223,6 +274,10 @@ def test_end_to_end_evaluation() -> None:
             methods=("pca", "lda", "ae", "polca", "polca_sup"),
             out_dir=str(tmp_dir),
             run_ablation=True,
+            # The smoke test always runs on the CPU: it must be runnable
+            # while a GPU benchmark is occupying the device, and a tiny
+            # two-epoch run gains nothing from the GPU.
+            device="cpu",
             verbose=False,
         )
 
@@ -272,6 +327,7 @@ def main() -> int:
         test_orthogonality_of_orthonormal_set,
         test_ablation_flags_change_loss,
         test_polca_training_losses,
+        test_ssim_matches_skimage,
         test_end_to_end_evaluation,
     ]
     print("Running the POLCA Net pipeline smoke test")

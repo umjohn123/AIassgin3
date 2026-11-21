@@ -301,11 +301,19 @@ def _run_method(
     result.update(_evaluate_latents(method, z_train, z_test, y_train, y_test, seed))
 
     if keep_artifacts:
+        # Only the *test* artefacts are kept: the figures need the latent
+        # codes and the reconstructions of the test split.  The training
+        # artefacts (``z_train`` / ``recon_train``) are deliberately dropped --
+        # on MNIST a single ``recon_train`` array is 48000 x 784 float64
+        # (~300 MB) and keeping one per method and seed exhausted the RAM.
+        #
+        # The arrays are stored as float32: the metrics are computed on the
+        # float64 copies that are produced before this point, and the figures
+        # only display the values, so the halving of the file size (and of
+        # the memory needed to merge the three datasets) costs nothing.
         artifacts = {
-            "z_test": z_test,
-            "recon_test": recon_test,
-            "z_train": z_train,
-            "recon_train": recon_train,
+            "z_test": z_test.astype(np.float32),
+            "recon_test": recon_test.astype(np.float32),
         }
 
     result["_artifacts"] = artifacts
@@ -670,7 +678,6 @@ def run_full_evaluation(
                     if save_latents and artifacts:
                         latent_store[f"{key}__z_test"] = artifacts["z_test"]
                         latent_store[f"{key}__recon_test"] = artifacts["recon_test"]
-                        latent_store[f"{key}__z_train"] = artifacts["z_train"]
                         latent_store[f"{key}__y_test"] = np.asarray(
                             y_test, dtype=np.int64
                         )

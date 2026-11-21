@@ -24,7 +24,7 @@ from __future__ import annotations
 import argparse
 import sys
 from pathlib import Path
-from typing import Any, Dict, List, Optional, Sequence
+from typing import Any, Dict, List, Optional, Sequence, Tuple
 
 import matplotlib
 
@@ -302,8 +302,14 @@ def figure_latent_orthogonality(
     dataset: str = "digits",
     latent_dim: int = 8,
     seed: int = 5,
+    datasets: Optional[Sequence[str]] = None,
 ) -> Optional[Path]:
-    """Heat map of the latent cosine-similarity matrix (PCA vs. POLCA)."""
+    """Heat map of the latent cosine-similarity matrix (PCA vs. POLCA).
+
+    When several datasets are given, one row of panels is produced per
+    dataset so that the orthogonality property can be checked on all of
+    them rather than on one.
+    """
     from src.metrics import cosine_similarity_matrix
 
     latents = _load_latents(out_dir)
@@ -311,51 +317,66 @@ def figure_latent_orthogonality(
         print("  ! no latents.npz -- skipping latent_orthogonality.png")
         return None
 
-    panels = []
-    for method in ("pca", "polca"):
-        key = f"{dataset}__{method}__d{latent_dim}__s{seed}__z_test"
-        if key not in latents:
-            candidates = [
-                k
-                for k in latents
-                if k.startswith(f"{dataset}__{method}__") and k.endswith("__z_test")
-            ]
-            if not candidates:
-                continue
-            key = sorted(candidates)[0]
-        z = latents[key]
-        panels.append((METHOD_LABELS.get(method, method), cosine_similarity_matrix(z)))
+    target_datasets = list(datasets) if datasets else [dataset]
+    rows: List[Tuple[str, List[Tuple[str, np.ndarray]]]] = []
+    for ds in target_datasets:
+        panels: List[Tuple[str, np.ndarray]] = []
+        for method in ("pca", "polca"):
+            key = f"{ds}__{method}__d{latent_dim}__s{seed}__z_test"
+            if key not in latents:
+                candidates = [
+                    k
+                    for k in latents
+                    if k.startswith(f"{ds}__{method}__") and k.endswith("__z_test")
+                ]
+                if not candidates:
+                    continue
+                key = sorted(candidates)[0]
+            z = latents[key]
+            panels.append((METHOD_LABELS.get(method, method), cosine_similarity_matrix(z)))
 
-    if not panels:
+        if panels:
+            rows.append((ds, panels))
+
+    if not rows:
         print("  ! no usable latent entries -- skipping latent_orthogonality.png")
         return None
 
-    fig, axes = _fig(1, len(panels), figsize=(4.2 * len(panels), 3.6))
-    for ax, (title, sim) in zip(np.atleast_1d(axes), panels):
-        im = ax.imshow(sim, cmap="RdBu_r", vmin=-1, vmax=1)
-        ax.set_title(f"{title} latent space ({dataset})")
-        ax.set_xlabel("Latent dimension")
-        ax.set_ylabel("Latent dimension")
-        n = sim.shape[0]
-        ax.set_xticks(np.arange(n))
-        ax.set_yticks(np.arange(n))
-        ax.grid(False)
-        for i in range(n):
-            for j in range(n):
-                ax.text(
-                    j,
-                    i,
-                    f"{sim[i, j]:.2f}",
-                    ha="center",
-                    va="center",
-                    fontsize=7,
-                    color="white" if abs(sim[i, j]) > 0.55 else "black",
-                )
-        fig.colorbar(im, ax=ax, fraction=0.046, pad=0.04, label="Cosine similarity")
+    n_cols = max(len(panels) for _, panels in rows)
+    fig, axes = _fig(len(rows), n_cols, figsize=(4.2 * n_cols, 3.6 * len(rows)))
+    axes = np.atleast_2d(axes)
+
+    for r, (ds, panels) in enumerate(rows):
+        for c, (title, sim) in enumerate(panels):
+            ax = axes[r][c]
+            im = ax.imshow(sim, cmap="RdBu_r", vmin=-1, vmax=1)
+            ax.set_title(f"{title} latent space ({ds})")
+            ax.set_xlabel("Latent dimension")
+            ax.set_ylabel("Latent dimension")
+            n = sim.shape[0]
+            ax.set_xticks(np.arange(n))
+            ax.set_yticks(np.arange(n))
+            ax.grid(False)
+            for i in range(n):
+                for j in range(n):
+                    ax.text(
+                        j,
+                        i,
+                        f"{sim[i, j]:.2f}",
+                        ha="center",
+                        va="center",
+                        fontsize=7,
+                        color="white" if abs(sim[i, j]) > 0.55 else "black",
+                    )
+            fig.colorbar(im, ax=ax, fraction=0.046, pad=0.04, label="Cosine similarity")
+        # hide the unused panels of a short row
+        for c in range(len(panels), n_cols):
+            axes[r][c].axis("off")
 
     fig.suptitle(
         "Latent orthogonality: cosine-similarity matrix (paper convention)", fontsize=11
     )
+    fig.tight_layout(rect=(0, 0, 1, 0.96))
     return _save(fig, fig_dir / "latent_orthogonality.png")
 
 
@@ -368,8 +389,13 @@ def figure_variance_ordering(
     dataset: str = "digits",
     latent_dim: int = 8,
     seed: int = 5,
+    datasets: Optional[Sequence[str]] = None,
 ) -> Optional[Path]:
-    """PCA explained-variance curve vs. the POLCA latent variances."""
+    """PCA explained-variance curve vs. the POLCA latent variances.
+
+    When several datasets are given, one row of panels is produced per
+    dataset.
+    """
     from src.metrics import latent_variance_per_dim
 
     latents = _load_latents(out_dir)
@@ -377,61 +403,67 @@ def figure_variance_ordering(
         print("  ! no latents.npz -- skipping variance_ordering.png")
         return None
 
-    pca_key = f"{dataset}__pca__d{latent_dim}__s{seed}__z_test"
-    polca_key = f"{dataset}__polca__d{latent_dim}__s{seed}__z_test"
-    for key in (pca_key, polca_key):
-        if key not in latents:
-            candidates = [
-                k
-                for k in latents
-                if k.startswith(f"{dataset}__{key.split('__')[1]}__") and k.endswith("__z_test")
-            ]
-            if candidates:
-                if key == pca_key:
-                    pca_key = sorted(candidates)[0]
-                else:
-                    polca_key = sorted(candidates)[0]
+    target_datasets = list(datasets) if datasets else [dataset]
 
-    fig, axes = _fig(1, 2, figsize=(9.0, 3.5))
+    fig, axes = _fig(len(target_datasets), 2, figsize=(9.0, 3.5 * len(target_datasets)))
+    axes = np.atleast_2d(axes)
 
-    # --- PCA explained variance ------------------------------------------ #
-    ax = axes[0]
-    ev_key = None
-    for k in latents:
-        if k.startswith(f"{dataset}__pca__") and k.endswith("__explained_variance_ratio"):
-            ev_key = k
-            break
-    if ev_key is not None:
-        ev = np.asarray(latents[ev_key], dtype=np.float64)
-        idx = np.arange(1, ev.size + 1)
-        ax.bar(idx, ev, color=PALETTE[0], width=0.62, label="PCA explained variance")
-        ax.plot(idx, np.cumsum(ev), color=PALETTE[1], marker="o", label="Cumulative")
-        ax.set_xlabel("Principal component")
-        ax.set_ylabel("Explained variance ratio")
-        ax.set_title(f"PCA variance spectrum ({dataset})")
-        ax.set_xticks(idx)
-        ax.legend(fontsize=8)
-    else:
-        ax.text(0.5, 0.5, "No PCA explained variance available", ha="center", va="center")
-        ax.set_axis_off()
+    for r, ds in enumerate(target_datasets):
+        pca_key = f"{ds}__pca__d{latent_dim}__s{seed}__z_test"
+        polca_key = f"{ds}__polca__d{latent_dim}__s{seed}__z_test"
+        for key in (pca_key, polca_key):
+            if key not in latents:
+                candidates = [
+                    k
+                    for k in latents
+                    if k.startswith(f"{ds}__{key.split('__')[1]}__") and k.endswith("__z_test")
+                ]
+                if candidates:
+                    if key == pca_key:
+                        pca_key = sorted(candidates)[0]
+                    else:
+                        polca_key = sorted(candidates)[0]
 
-    # --- POLCA latent variances ------------------------------------------ #
-    ax = axes[1]
-    if polca_key in latents:
-        var = np.asarray(latent_variance_per_dim(latents[polca_key]), dtype=np.float64)
-        idx = np.arange(1, var.size + 1)
-        ax.bar(idx, var, color=PALETTE[2], width=0.62, label="POLCA latent variance")
-        ax.plot(idx, var, color=PALETTE[3], marker="s", linestyle="--", label="Ordered")
-        ax.set_xlabel("Latent component")
-        ax.set_ylabel("Variance")
-        ax.set_title(f"POLCA latent variances ({dataset})")
-        ax.set_xticks(idx)
-        ax.legend(fontsize=8)
-    else:
-        ax.text(0.5, 0.5, "No POLCA latent codes available", ha="center", va="center")
-        ax.set_axis_off()
+        # --- PCA explained variance -------------------------------------- #
+        ax = axes[r][0]
+        ev_key = None
+        for k in latents:
+            if k.startswith(f"{ds}__pca__") and k.endswith("__explained_variance_ratio"):
+                ev_key = k
+                break
+        if ev_key is not None:
+            ev = np.asarray(latents[ev_key], dtype=np.float64)
+            idx = np.arange(1, ev.size + 1)
+            ax.bar(idx, ev, color=PALETTE[0], width=0.62, label="PCA explained variance")
+            ax.plot(idx, np.cumsum(ev), color=PALETTE[1], marker="o", label="Cumulative")
+            ax.set_xlabel("Principal component")
+            ax.set_ylabel("Explained variance ratio")
+            ax.set_title(f"PCA variance spectrum ({ds})")
+            ax.set_xticks(idx)
+            ax.legend(fontsize=8)
+        else:
+            ax.text(0.5, 0.5, "No PCA explained variance available",
+                    ha="center", va="center")
+            ax.set_axis_off()
+
+        # --- POLCA latent variances ------------------------------------- #
+        ax = axes[r][1]
+        if polca_key in latents:
+            var = np.asarray(latent_variance_per_dim(latents[polca_key]), dtype=np.float64)
+            idx = np.arange(1, var.size + 1)
+            ax.bar(idx, var, color=PALETTE[2], width=0.62, label="POLCA latent variance")
+            ax.plot(idx, var, color=PALETTE[3], marker="s", linestyle="--", label="Ordered")
+            ax.set_xlabel("Latent component")
+            ax.set_ylabel("Variance")
+            ax.set_title(f"POLCA latent variances ({ds})")
+            ax.set_xticks(idx)
+            ax.legend(fontsize=8)
+        else:
+            ax.text(0.5, 0.5, "No POLCA latent codes available", ha="center", va="center")
+            ax.set_axis_off()
 
     fig.suptitle("Variance ordering of the latent space", fontsize=11)
+    fig.tight_layout(rect=(0, 0, 1, 0.97))
     return _save(fig, fig_dir / "variance_ordering.png")
 
 
@@ -768,8 +800,8 @@ def make_all_figures(
 
     for func, kwargs in [
         (figure_reconstruction_grid, {"datasets": datasets}),
-        (figure_latent_orthogonality, {"dataset": datasets[0], "latent_dim": latent_dim, "seed": seed}),
-        (figure_variance_ordering, {"dataset": datasets[0], "latent_dim": latent_dim, "seed": seed}),
+        (figure_latent_orthogonality, {"dataset": datasets[0], "latent_dim": latent_dim, "seed": seed, "datasets": datasets}),
+        (figure_variance_ordering, {"dataset": datasets[0], "latent_dim": latent_dim, "seed": seed, "datasets": datasets}),
         (figure_latent_scatter, {"datasets": datasets, "seed": seed}),
         (figure_classification_metrics, {"datasets": datasets}),
         (figure_ablation, {"datasets": datasets}),

@@ -23,6 +23,11 @@ tmp/
 *.tmp
 *.log
 
+# ... but the raw stdout of every experiment run IS committed on purpose:
+# it is the evidence that the numbers in the report come from a real run.
+!results/*.log
+!results/logs/*.log
+
 # Scratch output from manual probes / smoke runs
 probe_out.txt
 proc.txt
@@ -40,3 +45,4 @@ results/_figtest/
 
 # Large intermediate tensors cached by src/evaluate.py
 results/latents.npz
+results/*/latents.npz
