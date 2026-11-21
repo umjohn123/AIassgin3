@@ -134,6 +134,31 @@ pdf = (root / "report" / "AI_Assignment3_Report.pdf").read_bytes()
 check("pdf header", pdf[:5] == b"%PDF-")
 check("pdf size > 1MB", len(pdf) > 1024 * 1024, f"{len(pdf)//1024} KB")
 
+# A page that carries nothing but the running header and the page number is
+# a blank page: it is produced when a page break is emitted as its own empty
+# paragraph and the preceding content already filled the sheet.  The report
+# must not contain any.
+try:
+    import fitz  # type: ignore
+
+    _pdf = fitz.open(str(root / "report" / "AI_Assignment3_Report.pdf"))
+    _blank = []
+    for _pno in range(_pdf.page_count):
+        _page = _pdf[_pno]
+        _body = "\n".join(
+            _line
+            for _line in _page.get_text().splitlines()
+            if _line.strip()
+            and not _line.startswith("CISC3024 AI Assignment")
+            and not _line.startswith("Page ")
+        ).strip()
+        if not _body and not _page.get_images():
+            _blank.append(_pno + 1)
+    _pdf.close()
+    check("pdf has no blank page", not _blank, f"blank pages: {_blank}" if _blank else "")
+except ImportError:  # pragma: no cover - PyMuPDF is optional
+    print("  [SKIP] blank-page check (PyMuPDF not installed)")
+
 print("\n== Author attribution ==")
 import json
 config = json.loads((root / "report" / "site_config.json").read_text(encoding="utf-8"))

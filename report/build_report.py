@@ -45,7 +45,7 @@ if str(REPO_ROOT) not in sys.path:
 from docx import Document  # noqa: E402
 from docx.enum.section import WD_SECTION  # noqa: E402
 from docx.enum.table import WD_TABLE_ALIGNMENT  # noqa: E402
-from docx.enum.text import WD_ALIGN_PARAGRAPH, WD_BREAK  # noqa: E402
+from docx.enum.text import WD_ALIGN_PARAGRAPH  # noqa: E402
 from docx.oxml import OxmlElement  # noqa: E402
 from docx.oxml import parse_xml  # noqa: E402
 from docx.oxml.ns import qn  # noqa: E402
@@ -347,6 +347,8 @@ class ReportWriter:
         self.table_no = 0
         self.eq_no = 0
         self.text_log: List[str] = []
+        self._pending_page_break = False
+        _install_deferred_page_break(self)
 
     # -- structure -------------------------------------------------------- #
     def h1(self, text: str) -> None:
@@ -624,10 +626,76 @@ class ReportWriter:
 
     # -- page breaks ------------------------------------------------------- #
     def page_break(self) -> None:
-        p = self.doc.add_paragraph()
-        p.paragraph_format.space_after = Pt(0)
-        run = p.add_run()
-        run.add_break(WD_BREAK.PAGE)
+        """Start the next block on a fresh page.
+
+        The break is *deferred*: it is remembered and then applied to the
+        first paragraph that is added afterwards, as a ``w:pageBreakBefore``
+        property.  A standalone paragraph holding only a ``w:br`` of type
+        ``page`` would be the obvious implementation, but it produces a
+        completely blank page whenever the preceding content already fills
+        the sheet: the empty paragraph is pushed onto the next page and the
+        break inside it then starts yet another page.  Attaching the break to
+        the following paragraph cannot create a page without content.
+        """
+        self._pending_page_break = True
+
+
+def _install_deferred_page_break(writer: "ReportWriter") -> None:
+    """Hook ``Document.add_paragraph``/``add_table`` for the deferred break.
+
+    Every block the report adds goes through one of those two methods, so
+    hooking them covers the whole document.  When a page break is pending,
+    the very next paragraph (or the first paragraph inside the first cell of
+    the next table) receives a ``w:pageBreakBefore`` property, which makes
+    Word start it on a fresh sheet without ever emitting a page of its own.
+    """
+    doc = writer.doc
+    original_add_paragraph = doc.add_paragraph
+    original_add_table = doc.add_table
+
+    def add_paragraph(*args, **kwargs):
+        paragraph = original_add_paragraph(*args, **kwargs)
+        if writer._pending_page_break:
+            writer._pending_page_break = False
+            paragraph.paragraph_format.page_break_before = True
+        return paragraph
+
+    def add_table(*args, **kwargs):
+        table = original_add_table(*args, **kwargs)
+        if writer._pending_page_break:
+            writer._pending_page_break = False
+            # A table carries no page-break property of its own, so the break
+            # is attached to the first paragraph of its first cell.
+            for p_el in _first_cell_paragraphs(table._tbl):
+                _set_page_break_before(p_el)
+                break
+        return table
+
+    doc.add_paragraph = add_paragraph
+    doc.add_table = add_table
+
+
+def _set_page_break_before(p_el) -> None:
+    """Set ``w:pageBreakBefore`` on a raw ``w:p`` element."""
+    pPr = p_el.find(qn("w:pPr"))
+    if pPr is None:
+        pPr = OxmlElement("w:pPr")
+        p_el.insert(0, pPr)
+    if pPr.find(qn("w:pageBreakBefore")) is None:
+        pPr._insert_pageBreakBefore(OxmlElement("w:pageBreakBefore"))
+
+
+def _first_cell_paragraphs(tbl_el):
+    """Yield the paragraphs of the first cell of a raw ``w:tbl`` element."""
+    for tr in tbl_el.iterchildren():
+        if tr.tag.split("}")[-1] != "tr":
+            continue
+        for tc in tr.iterchildren():
+            if tc.tag.split("}")[-1] != "tc":
+                continue
+            for p_el in tc.iterchildren():
+                if p_el.tag.split("}")[-1] == "p":
+                    yield p_el
 
 
 # --------------------------------------------------------------------------- #
