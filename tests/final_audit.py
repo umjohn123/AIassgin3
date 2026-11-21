@@ -58,6 +58,11 @@ for rel in [
     "report/docx_to_pdf.py",
     "report/sync_site_assets.py",
     "report/update_site_results.py",
+    "report/equations.py",
+    "report/math_symbols.py",
+    "report/math_render.py",
+    "report/latex_to_mathml.py",
+    "report/render_site_math.py",
     "merge_results.py",
     "regen_summary.py",
 ]:
@@ -189,6 +194,40 @@ check(
     (root / "docs" / "assets" / "AI_PROMPTS.md").read_bytes()
     == (root / "AI_PROMPTS.md").read_bytes(),
 )
+
+print("\n== Site mathematics ==")
+# The site publishes the same mathematics as the report, as native MathML.
+# MathML is markup rather than script, so the page stays self-contained.
+sys.path.insert(0, str(root))
+from report.equations import INLINE, SITE_EQUATIONS, SITE_METRICS  # noqa: E402
+from report.latex_to_mathml import render_inline_mathml, render_mathml  # noqa: E402
+
+display_count = html.count('<math xmlns="http://www.w3.org/1998/Math/MathML" display="block">')
+inline_count = html.count('<math xmlns="http://www.w3.org/1998/Math/MathML">')
+expected_display = len(SITE_EQUATIONS) + len(SITE_METRICS)
+check(
+    f"{expected_display} display equations",
+    display_count == expected_display,
+    f"{display_count} found",
+)
+check("inline symbols typeset", inline_count >= len(INLINE), f"{inline_count} found")
+check("no un-typeset math placeholder", 'data-math="' not in html)
+check("no ASCII formula leftovers", "sum<sub>" not in html and "&#770;" not in html)
+# Every equation of the shared source has to be present verbatim.
+_missing = [
+    title for title, latex in SITE_EQUATIONS + SITE_METRICS
+    if render_mathml(latex) not in html
+]
+check("every shared equation is on the page", not _missing, str(_missing))
+# And the inline symbols too.
+_missing_inline = [
+    name for name, latex in INLINE.items()
+    if render_inline_mathml(latex) not in html
+]
+check("every inline symbol is on the page", not _missing_inline, str(_missing_inline))
+# The page must not depend on a script or an external stylesheet for its
+# mathematics: the whole point of MathML is that the browser draws it.
+check("no external maths dependency", "mathjax" not in html.lower() and "katex" not in html.lower())
 
 print("\n== GitHub Pages publishing source ==")
 # GitHub Pages publishes exactly one folder.  The project page lives in

@@ -76,6 +76,11 @@ AIassgin3/
 ├── experiments/config.json # the run configuration used for the reported results
 ├── results/                # metrics.csv, metrics.json, summary.md, ablation.csv, figures/
 ├── report/                 # build_report.py, docx_to_pdf.py + the .docx / .pdf report
+│   ├── equations.py        # the equations of the report, in one place
+│   ├── math_symbols.py     # the symbol tables shared by both maths renderers
+│   ├── math_render.py      # LaTeX subset -> native Word equations (OMML)
+│   ├── latex_to_mathml.py  # LaTeX subset -> native MathML for the website
+│   └── render_site_math.py # typesets the equations into docs/index.html
 ├── docs/                   # the GitHub Pages site (index.html)
 ├── run_all.py              # evaluate the three datasets (two waves)
 ├── merge_results.py        # merge the per-dataset bundles back into results/
@@ -227,6 +232,17 @@ a fabricated measurement cannot reach the document.
 The project page lives in `docs/` and is a **single self-contained HTML file** — no
 build step, no external CDN, no web fonts — so it renders identically online and
 offline.
+
+The mathematics on the page is **native MathML**, which the browser renders itself
+with real fraction bars, real summation limits and a proper maths font. MathML is
+markup rather than script, so the page still needs no JavaScript and no CDN. The
+equations are generated from `report/equations.py` — the same module the Word report
+reads — so the document and the page can never disagree about a formula. Regenerate
+them whenever the equations change:
+
+```powershell
+python report/render_site_math.py
+```
 
 GitHub Pages publishes only the `docs/` folder as the site root, so the figures, the
 report and the prompt log that the page links to are mirrored into `docs/assets/`

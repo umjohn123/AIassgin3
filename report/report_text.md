@@ -184,7 +184,11 @@ AIassgin3/
 |   |-- AI_Assignment3_Report.pdf
 |   |-- build_report.py
 |   |-- docx_to_pdf.py
+|   |-- equations.py
+|   |-- latex_to_mathml.py
 |   |-- math_render.py
+|   |-- math_symbols.py
+|   |-- render_site_math.py
 |   |-- report_text.md
 |   |-- site_config.json
 |   |-- sync_site_assets.py

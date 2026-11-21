@@ -44,7 +44,21 @@ the operator is nested inside a fraction.
 from __future__ import annotations
 
 import re
+import sys
+from pathlib import Path
 from typing import List, Optional
+
+sys.path.insert(0, str(Path(__file__).resolve().parent))
+
+from math_symbols import (  # noqa: E402
+    ACCENTS,
+    BLACKBOARD,
+    BIG_OPERATORS,
+    GREEK,
+    SPACES,
+    SYMBOLS,
+    TEXT_COMMANDS,
+)
 
 MATH_NS = "http://schemas.openxmlformats.org/officeDocument/2006/math"
 WORD_NS = "http://schemas.openxmlformats.org/wordprocessingml/2006/main"
@@ -63,121 +77,6 @@ INLINE_SIZE = 12.0
 _CTRL_PR = (
     f'<m:ctrlPr><w:rPr><w:rFonts w:ascii="{MATH_FONT}" w:hAnsi="{MATH_FONT}"/>'
     f"<w:i/></w:rPr></m:ctrlPr>"
-)
-
-_GREEK = {
-    "alpha": "α",
-    "beta": "β",
-    "gamma": "γ",
-    "delta": "δ",
-    "epsilon": "ε",
-    "varepsilon": "ε",
-    "zeta": "ζ",
-    "eta": "η",
-    "theta": "θ",
-    "iota": "ι",
-    "kappa": "κ",
-    "lambda": "λ",
-    "mu": "μ",
-    "nu": "ν",
-    "xi": "ξ",
-    "pi": "π",
-    "rho": "ρ",
-    "sigma": "σ",
-    "tau": "τ",
-    "upsilon": "υ",
-    "phi": "φ",
-    "chi": "χ",
-    "psi": "ψ",
-    "omega": "ω",
-    "Sigma": "Σ",
-    "Delta": "Δ",
-    "Omega": "Ω",
-    "Phi": "Φ",
-}
-
-#: Relations and other named symbols.
-_SYMBOLS = {
-    "leq": "≤",
-    "le": "≤",
-    "geq": "≥",
-    "ge": "≥",
-    "neq": "≠",
-    "ne": "≠",
-    "approx": "≈",
-    "equiv": "≡",
-    "propto": "∝",
-    "cdot": "⋅",
-    "times": "×",
-    "div": "÷",
-    "pm": "±",
-    "mp": "∓",
-    "to": "→",
-    "rightarrow": "→",
-    "leftarrow": "←",
-    "Rightarrow": "⇒",
-    "in": "∈",
-    "notin": "∉",
-    "subset": "⊂",
-    "forall": "∀",
-    "exists": "∃",
-    "partial": "∂",
-    "nabla": "∇",
-    "infty": "∞",
-    "ldots": "…",
-    "dots": "…",
-    "prime": "′",
-    "lVert": "‖",
-    "rVert": "‖",
-    "ll": "≪",
-    "gg": "≫",
-    "ast": "∗",
-    "star": "⋆",
-    "oplus": "⊕",
-    "otimes": "⊗",
-    "circ": "∘",
-    "bullet": "∙",
-    "degree": "°",
-}
-
-_ACCENTS = {
-    "hat": "̂",  # combining circumflex
-    "bar": "̄",  # combining macron
-    "tilde": "̃",  # combining tilde
-    "dot": "̇",  # combining dot above
-    "check": "̌",  # combining caron
-    "breve": "̆",  # combining breve
-}
-
-#: LaTeX spacing commands -> the space that is actually emitted.
-#:
-#: ``\;`` is a thick space, ``\:`` a medium one, ``\!`` a negative thin
-#: space (which pulls the following symbol closer to the preceding one) and
-#: the named commands are the usual word-sized spaces.
-_SPACES = {
-    ",": " ",
-    " ": " ",
-    ":": " ",
-    ";": " ",
-    "!": "",
-    "quad": " ",
-    "qquad": "  ",
-}
-
-#: BlackBoard-bold characters, used for the expectation symbol.
-_BLACKBOARD = {
-    "E": "𝔼",
-    "R": "ℝ",
-    "C": "ℂ",
-    "N": "ℕ",
-    "Z": "ℤ",
-    "Q": "ℚ",
-}
-
-#: Commands whose argument is upright text rather than mathematics.
-_TEXT_COMMANDS = (
-    "mathrm", "text", "operatorname", "log", "ln", "exp", "sin", "cos",
-    "tan", "max", "min", "arg", "det", "dim", "ker",
 )
 
 
@@ -311,19 +210,19 @@ class _Parser:
         if not name:
             # A punctuation-only command such as ``\!``, ``\,`` or ``\;``.
             symbol = self._peek()
-            if symbol in _SPACES:
+            if symbol in SPACES:
                 self.i += 1
-                return _run(_SPACES[symbol], size=self.size)
+                return _run(SPACES[symbol], size=self.size)
             return _run("\\", size=self.size)
 
-        if name in _SPACES:
-            return _run(_SPACES[name], size=self.size)
+        if name in SPACES:
+            return _run(SPACES[name], size=self.size)
 
-        if name in _GREEK:
-            return _run(_GREEK[name], size=self.size)
+        if name in GREEK:
+            return _run(GREEK[name], size=self.size)
 
-        if name in _SYMBOLS:
-            return _run(_SYMBOLS[name], size=self.size)
+        if name in SYMBOLS:
+            return _run(SYMBOLS[name], size=self.size)
 
         if name == "frac":
             # A big operator inside a fraction has no room for limits placed
@@ -347,17 +246,11 @@ class _Parser:
                 f"<m:deg/><m:e>{body}</m:e></m:rad>"
             )
 
-        if name == "sum":
-            return self._big_operator("∑")
+        if name in BIG_OPERATORS:
+            return self._big_operator(BIG_OPERATORS[name])
 
-        if name == "prod":
-            return self._big_operator("∏")
-
-        if name == "int":
-            return self._big_operator("∫")
-
-        if name in _ACCENTS:
-            accent = _ACCENTS[name]
+        if name in ACCENTS:
+            accent = ACCENTS[name]
             body = self._group()
             return (
                 f'<m:acc><m:accPr><m:chr m:val="{accent}"/>{_CTRL_PR}</m:accPr>'
@@ -368,7 +261,7 @@ class _Parser:
             body = self._group()
             return self._blackboard(body)
 
-        if name in _TEXT_COMMANDS:
+        if name in TEXT_COMMANDS:
             # Upright text: the braces contain plain prose, not mathematics.
             if self._peek() == "{":
                 self.i += 1
@@ -396,7 +289,7 @@ class _Parser:
         """Turn a plain letter group into its blackboard-bold form."""
         letters = re.findall(r"<m:t[^>]*>(.*?)</m:t>", body, re.S)
         raw = "".join(letters)
-        mapped = "".join(_BLACKBOARD.get(c, c) for c in raw)
+        mapped = "".join(BLACKBOARD.get(c, c) for c in raw)
         return _run(mapped, size=self.size)
 
     def _left_right(self) -> str:

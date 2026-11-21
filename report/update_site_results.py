@@ -33,12 +33,16 @@ BEGIN_MARKER = "<!-- BEGIN RESULTS TABLE -->"
 END_MARKER = "<!-- END RESULTS TABLE -->"
 
 #: Display name of every method, in the order in which they are listed.
+#:
+#: The loss-term symbol is marked with ``data-math`` so that
+#: ``report/render_site_math.py`` can replace it by its MathML; the text
+#: between the tags is the fallback for a browser without MathML support.
 METHOD_ORDER: Tuple[Tuple[str, str], ...] = (
     ("pca", "PCA"),
     ("lda", "LDA"),
     ("ae", "Autoencoder"),
     ("polca", "POLCA-Net"),
-    ("polca_sup", "POLCA-Net + <code>L_class</code>"),
+    ("polca_sup", "POLCA-Net + <code data-math=\"L_class\">L_class</code>"),
 )
 
 #: Display name of every dataset.

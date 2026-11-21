@@ -52,6 +52,16 @@ from docx.oxml.ns import qn  # noqa: E402
 from docx.shared import Cm, Pt, RGBColor  # noqa: E402
 
 sys.path.insert(0, str(REPO_ROOT / "report"))
+from equations import (  # noqa: E402
+    CENTRE_OF_MASS,
+    CLASSIFICATION,
+    COMPOSITE,
+    ORTHOGONALITY,
+    PSNR,
+    RECONSTRUCTION,
+    RMSE,
+    VARIANCE,
+)
 from math_render import render_equation, render_inline  # noqa: E402
 
 # --------------------------------------------------------------------------- #
@@ -1554,9 +1564,7 @@ def build_report(results_dir: Path, figures_dir: Path, out_path: Path,
         "objective is"
     )
     w.formula(
-        r"L_{\mathrm{polca}} \;=\; L_{\mathrm{rec}} \;+\; L_{\mathrm{class}} "
-        r"\;+\; \alpha\, L_{\mathrm{ort}} \;+\; \beta\, L_{\mathrm{com}} "
-        r"\;+\; \gamma\, L_{\mathrm{var}}"
+        COMPOSITE
     )
     w.body(
         "where $L_{\\mathrm{rec}}$ is the reconstruction error, "
@@ -1612,14 +1620,12 @@ def build_report(results_dir: Path, figures_dir: Path, out_path: Path,
         "component $i$ over the batch. The five terms are defined as follows."
     )
     w.formula(
-        r"L_{\mathrm{rec}} \;=\; \mathrm{mean}\!\left( (\hat{x} - x)^{2} \right)",
+        RECONSTRUCTION,
         "The reconstruction term: the mean squared error over all elements between "
         "the decoder output and the input.",
     )
     w.formula(
-        r"L_{\mathrm{ort}} \;=\; \frac{2}{n\,(n-1)} "
-        r"\sum_{1 \leq i < j \leq n} { S_{ij}^{2} }"
-        r"\;,\qquad S = \hat{Z}^{T}\hat{Z}",
+        ORTHOGONALITY,
         "The orthogonality term. The sum runs over the strict upper triangle of "
         "$S$, so each unordered pair of latent components is counted exactly "
         "once; the prefactor $2/(n(n-1))$ converts that sum into the mean squared "
@@ -1627,16 +1633,12 @@ def build_report(results_dir: Path, figures_dir: Path, out_path: Path,
         "therefore $L_{\\mathrm{ort}} = 0$.",
     )
     w.formula(
-        r"L_{\mathrm{var}} \;=\; \sum_{i=0}^{n-1} "
-        r"{ \mathbb{E}\!\left[ ( z_{i} - \mu_{i} )^{2} \right] }",
+        VARIANCE,
         "The variance term: the sum of the per-component variances of the latent "
         "codes over the batch, using the population estimator (division by N).",
     )
     w.formula(
-        r"L_{\mathrm{com}} \;=\; \frac{ \sum_{i=0}^{n-1} "
-        r"{ i^{1+\varepsilon}\, \mathbb{E}\!\left[ ( z_{i} - \mu_{i} )^{2} \right] } }"
-        r"{ n\, L_{\mathrm{var}} }"
-        r"\;,\qquad \varepsilon = 0.25",
+        CENTRE_OF_MASS,
         "The centre-of-mass term. The per-component variances are weighted by the "
         "increasing index i^(1+eps) and divided by the total variance L_var. "
         "Because the weights grow with the component index, the term is small when "
@@ -1644,8 +1646,7 @@ def build_report(results_dir: Path, figures_dir: Path, out_path: Path,
         "ordering - and large when it increases.",
     )
     w.formula(
-        r"L_{\mathrm{class}} \;=\; \mathrm{CrossEntropy}\!\left("
-        r"\mathrm{logits}(z),\, y \right)",
+        CLASSIFICATION,
         "The optional classification term. It is present only in the supervised "
         "mode, in which the latent code is fed to a linear head and the "
         "cross-entropy is back-propagated into the encoder. It is exactly zero "
@@ -2092,17 +2093,12 @@ def build_report(results_dir: Path, figures_dir: Path, out_path: Path,
         "kept as a fallback for environments without SciPy."
     )
     w.formula(
-        r"\mathrm{RMSE} \;=\; \sqrt{ \frac{1}{M} \sum_{k=1}^{M}"
-        r" ( x_{k} - \hat{x}_{k} )^{2} }"
-        r"\;,\qquad \mathrm{NRMSE} \;=\; \frac{ \mathrm{RMSE} }"
-        r"{ \max(x) - \min(x) }",
+        RMSE,
         "The normalised root mean squared error, where $M$ is the number of "
         "reconstructed elements and the range is taken over the original signal.",
     )
     w.formula(
-        r"\mathrm{PSNR} \;=\; 10 \log_{10}\!\left("
-        r"\frac{ R^{2} }{ \mathrm{MSE} } \right)"
-        r"\;,\qquad R = 1 \text{ for data in the unit interval}",
+        PSNR,
         "The peak signal-to-noise ratio in decibels.",
     )
     w.body(

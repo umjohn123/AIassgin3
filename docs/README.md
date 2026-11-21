@@ -88,5 +88,16 @@ soon as the deployment succeeds.
   `report/update_site_results.py`; a cell shows an em dash when the corresponding
   measurement is not present in the result file, so the page can never display a
   number that was not measured.
+- The mathematics is **native MathML**, which the browser renders itself with real
+  fraction bars, real summation limits and a proper maths font. MathML is markup
+  rather than script, so the page still needs no JavaScript, no CDN and no web
+  font. The equations come from `report/equations.py` — the same module the Word
+  report reads — and are written into the page by `report/render_site_math.py`:
+
+  ```powershell
+  python report/render_site_math.py
+  ```
+
+  Edit the LaTeX in `report/equations.py`, never the MathML in `index.html`.
 - The page adapts to the operating system's light or dark appearance via
   `prefers-color-scheme`, and collapses to a single column below 760 px.
