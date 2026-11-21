@@ -1012,6 +1012,76 @@ rather than at the moment of submission.
 
 ---
 
+## Stage 12 — Typesetting the mathematics
+
+### Prompt 12.1 (improve the formula rendering in the Word and PDF reports)
+
+The student pointed out that the equations in the generated report read like a
+transcript rather than a paper. The five loss equations of POLCA Net were
+emitted as monospaced ASCII in a shaded box:
+
+```
+L_ort   =  ( 2 / ( n * (n - 1) ) )  *  SUM_{i < j}  S_ij^2 ,        S = Z_hat^T Z_hat
+```
+
+The agent was asked to typeset them properly in both the `.docx` and the `.pdf`.
+
+### AI response (summary)
+
+The root cause was that `python-docx` has no equation support at all, so the
+builder had fallen back to monospaced text. The fix was to stop treating the
+equations as text and to emit them as **native Office Math (OMML)**, the XML
+that Word's own maths engine consumes. A new module, `report/math_render.py`,
+parses a deliberately small subset of LaTeX and produces OMML directly.
+
+The subset covers exactly what the report needs: subscripts and superscripts,
+`\frac`, `\sum` with limits under and over the operator, accents (`\hat`,
+`\bar`, `\tilde`), Greek letters, blackboard-bold characters (`\mathbb{E}` for
+the expectation), `\left`/`\right` delimiters, and the spacing commands. A
+general LaTeX engine would have been a far larger and much harder to verify
+dependency than five equations justify, so the parser was written small and
+was tested against every equation in the report.
+
+Three decisions were worth making explicitly:
+
+- **The equations stay editable.** Because they are real Word equations, a
+  marker can open the `.docx`, click into `L_ort` and read it as mathematics
+  rather than as a picture.
+- **The parser fails loudly.** If an equation cannot be parsed, the builder
+  prints a warning and falls back to the old monospaced rendering, so a typo in
+  the source can never silently remove an equation from the report.
+- **Inline mathematics was added at the same time.** Text between a pair of `$`
+  signs inside a paragraph, a bullet or a table cell is typeset as an inline
+  equation, so the symbols mentioned in the running text use the same
+  typography as the display equations. This is what removed the last of the
+  ASCII, such as `z-hat_i = z_i / ||z_i||_2` and `L_ort = 2/(n(n-1)) * n(n-1) = 2`.
+
+Two bugs were caught by inspecting the *rendered* PDF rather than the source,
+and both would have shipped if only the generated XML had been checked:
+
+- The parser's group scanner stopped only at `}`, so a parenthesised group
+  swallowed the closing bracket of the expression that contained it. The
+  variance term rendered as `𝔼[ ( z_i - mu_i )2 )]` - with a stray closing
+  parenthesis - and the orthogonality prefactor rendered as `n (n-1))`.
+  The fix was to make the stopping character a parameter, so that a braced
+  group stops at `}` and a bracketed one stops at its own closer.
+- The spacing commands `\;`, `\!` and `\,` are punctuation rather than words,
+  so the command reader consumed an empty name and emitted a literal
+  backslash into the equation. They now resolve through a separate
+  punctuation branch.
+
+The verification that mattered was rendering the affected pages of the PDF to
+images and looking at them. Reading the extracted text found the stray
+parenthesis; looking at the page confirmed that the fraction bars, the
+summation limits and the subscripts are typeset where they should be.
+
+The final `.docx` carries 8 display equations and 47 equation objects in
+total - 45 subscripts, 11 superscripts, 5 fractions, 4 summations, 6 accents
+and 16 delimiters - and the previous ASCII rendering is gone from the
+document.
+
+---
+
 ## Appendix A — Where each prompt landed in the report
 
 | Stage | Report section | Artefact produced |
@@ -1028,6 +1098,7 @@ rather than at the moment of submission.
 | 9 | 3, 4, 5 | Corrected `src/metrics.py`, `src/evaluate.py`, `tests/test_pipeline.py` |
 | 10 | 3, 4, 6 | Corrected `merge_results.py`, hardened `report/build_report.py`, `results/summary.md` |
 | 11 | 6 | Author identity read from `report/site_config.json` into the title page, Section 6.1 and the site |
+| 12 | 2, 4 | Native Word equations in the report, `report/math_render.py` |
 | — | 6 | `docs/index.html` (this repository's project page) |
 
 ## Appendix B — Prompt statistics
@@ -1046,7 +1117,8 @@ rather than at the moment of submission.
 | 9 | 2 | 1 | 2 (silent SSIM misuse, OOM) |
 | 10 | 1 | 0 | 2 (missing merged summary, report save lock) |
 | 11 | 1 | 0 | 1 (name typed into a generated file rather than its source) |
-| **Total** | **28** | **8** | **10** |
+| 12 | 1 | 1 | 2 (unmatched delimiter, unhandled spacing commands) |
+| **Total** | **29** | **9** | **12** |
 
 ---
 

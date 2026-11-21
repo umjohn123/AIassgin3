@@ -46,8 +46,12 @@ from docx.enum.section import WD_SECTION  # noqa: E402
 from docx.enum.table import WD_TABLE_ALIGNMENT  # noqa: E402
 from docx.enum.text import WD_ALIGN_PARAGRAPH, WD_BREAK  # noqa: E402
 from docx.oxml import OxmlElement  # noqa: E402
+from docx.oxml import parse_xml  # noqa: E402
 from docx.oxml.ns import qn  # noqa: E402
 from docx.shared import Cm, Pt, RGBColor  # noqa: E402
+
+sys.path.insert(0, str(REPO_ROOT / "report"))
+from math_render import render_equation, render_inline  # noqa: E402
 
 # --------------------------------------------------------------------------- #
 # Global constants
@@ -123,6 +127,33 @@ def _set_run_font(run, name: str = BODY_FONT, size: Optional[Pt] = None,
         run.font.italic = italic
     if color is not None:
         run.font.color.rgb = color
+
+
+def _split_inline_math(text: str) -> List[Tuple[str, bool]]:
+    """Split a string into prose and inline-equation segments.
+
+    A segment between a pair of ``$`` signs is mathematics; everything
+    else is prose.  An unpaired ``$`` is treated as an ordinary character
+    so that a stray dollar sign can never swallow the rest of a paragraph.
+    """
+    parts: List[Tuple[str, bool]] = []
+    buffer: List[str] = []
+    index = 0
+    while index < len(text):
+        if text[index] == "$":
+            closing = text.find("$", index + 1)
+            if closing != -1:
+                if buffer:
+                    parts.append(("".join(buffer), False))
+                    buffer = []
+                parts.append((text[index + 1:closing], True))
+                index = closing + 1
+                continue
+        buffer.append(text[index])
+        index += 1
+    if buffer:
+        parts.append(("".join(buffer), False))
+    return parts
 
 
 def _shade(element, fill: str = "F2F2F2") -> None:
@@ -320,12 +351,35 @@ class ReportWriter:
 
     # -- prose ------------------------------------------------------------ #
     def body(self, text: str, indent: bool = True, italic: bool = False) -> None:
+        """A paragraph of prose.
+
+        Text between a pair of ``$`` signs is typeset as an inline
+        equation, so that a symbol mentioned in the running text uses the
+        same typography as the display equations.
+        """
         p = self.doc.add_paragraph()
         if indent:
             p.paragraph_format.first_line_indent = Cm(0.75)
-        run = p.add_run(text)
-        _set_run_font(run, BODY_FONT, BODY_SIZE, italic=italic)
+
+        for chunk, is_math in _split_inline_math(text):
+            if is_math:
+                p._p.append(parse_xml(render_inline(chunk)))
+            else:
+                run = p.add_run(chunk)
+                _set_run_font(run, BODY_FONT, BODY_SIZE, italic=italic)
         self.text_log.append(text)
+
+    def body_rich(self, *parts: Tuple[str, bool]) -> None:
+        """A paragraph assembled from explicit ``(text, is_math)`` parts."""
+        p = self.doc.add_paragraph()
+        p.paragraph_format.first_line_indent = Cm(0.75)
+        for chunk, is_math in parts:
+            if is_math:
+                p._p.append(parse_xml(render_inline(chunk)))
+            else:
+                run = p.add_run(chunk)
+                _set_run_font(run, BODY_FONT, BODY_SIZE)
+        self.text_log.append(" ".join(c for c, _ in parts))
 
     def bullets(self, items: Iterable[str]) -> None:
         for item in items:
@@ -381,23 +435,54 @@ class ReportWriter:
         self.text_log.append(code.rstrip("\n"))
         self.text_log.append("```")
 
-    def formula(self, text: str, note: str = "") -> None:
-        """A display formula: monospace, indented, boxed."""
-        p = self.doc.add_paragraph()
-        pf = p.paragraph_format
-        pf.left_indent = Cm(1.0)
-        pf.right_indent = Cm(0.5)
-        pf.space_before = Pt(4)
-        pf.space_after = Pt(4)
-        pf.line_spacing = 1.15
-        run = p.add_run(text)
-        _set_run_font(run, "Consolas", Pt(11))
-        _shade(p, "F2F4F7")
-        _border(p, "8FA8C8")
+    def formula(self, latex: str, note: str = "") -> None:
+        """A display equation, typeset by Word's own maths engine.
+
+        The argument is a small LaTeX subset (see ``report/math_render.py``).
+        If it cannot be parsed the equation is emitted as monospaced text
+        instead, so a typo in the source can never silently remove an
+        equation from the report.
+        """
+        try:
+            xml = render_equation(latex)
+        except Exception as exc:  # pragma: no cover - defensive
+            print(f"  ! could not typeset the equation {latex!r}: {exc}")
+            xml = None
+
+        if xml:
+            p = self.doc.add_paragraph()
+            pf = p.paragraph_format
+            pf.space_before = Pt(6)
+            pf.space_after = Pt(6)
+            pf.line_spacing = 1.0
+            p._p.append(parse_xml(xml))
+        else:  # pragma: no cover - defensive
+            p = self.doc.add_paragraph()
+            pf = p.paragraph_format
+            pf.left_indent = Cm(1.0)
+            pf.right_indent = Cm(0.5)
+            pf.space_before = Pt(4)
+            pf.space_after = Pt(4)
+            pf.line_spacing = 1.15
+            run = p.add_run(latex)
+            _set_run_font(run, "Consolas", Pt(11))
+            _shade(p, "F2F4F7")
+            _border(p, "8FA8C8")
+
         self.text_log.append("")
-        self.text_log.append(f"    {text}")
+        self.text_log.append(f"    {latex}")
         if note:
             self.body(note, indent=True, italic=True)
+
+    def formula_inline(self, latex: str) -> None:
+        """An equation inside a running paragraph."""
+        p = self.doc.add_paragraph()
+        pf = p.paragraph_format
+        pf.first_line_indent = Cm(0.75)
+        pf.space_before = Pt(4)
+        pf.space_after = Pt(4)
+        p._p.append(parse_xml(render_inline(latex)))
+        self.text_log.append(f"    {latex}")
 
     # -- captions ---------------------------------------------------------- #
     def caption_above(self, text: str) -> None:
@@ -453,8 +538,13 @@ class ReportWriter:
                 p.paragraph_format.space_after = Pt(2)
                 p.paragraph_format.space_before = Pt(2)
                 p.paragraph_format.line_spacing = 1.0
-                run = p.add_run(str(value))
-                _set_run_font(run, BODY_FONT, TABLE_SIZE)
+                # A cell may contain inline mathematics between ``$`` signs.
+                for chunk, is_math in _split_inline_math(str(value)):
+                    if is_math:
+                        p._p.append(parse_xml(render_inline(chunk)))
+                    else:
+                        run = p.add_run(chunk)
+                        _set_run_font(run, BODY_FONT, TABLE_SIZE)
 
         if widths:
             for row in table.rows:
@@ -1297,15 +1387,18 @@ def build_report(results_dir: Path, figures_dir: Path, out_path: Path,
         "objective is"
     )
     w.formula(
-        "L_polca  =  L_rec  +  L_class  +  alpha * L_ort  +  beta * L_com  +  gamma * L_var"
+        r"L_{\mathrm{polca}} \;=\; L_{\mathrm{rec}} \;+\; L_{\mathrm{class}} "
+        r"\;+\; \alpha\, L_{\mathrm{ort}} \;+\; \beta\, L_{\mathrm{com}} "
+        r"\;+\; \gamma\, L_{\mathrm{var}}"
     )
     w.body(
-        "where L_rec is the reconstruction error, L_class is an optional "
-        "cross-entropy term that switches the model into its supervised, LDA-like "
-        "mode, L_ort is the latent orthogonality penalty, L_com is the "
-        "centre-of-mass term that imposes the variance ordering, and L_var is a "
-        "variance regulariser that keeps the previous term well-posed. The mapping "
-        "between the loss terms and the classical properties they restore is the "
+        "where $L_{\\mathrm{rec}}$ is the reconstruction error, "
+        "$L_{\\mathrm{class}}$ is an optional cross-entropy term that switches the "
+        "model into its supervised, LDA-like mode, $L_{\\mathrm{ort}}$ is the latent "
+        "orthogonality penalty, $L_{\\mathrm{com}}$ is the centre-of-mass term that "
+        "imposes the variance ordering, and $L_{\\mathrm{var}}$ is a variance "
+        "regulariser that keeps the previous term well-posed. The mapping between "
+        "the loss terms and the classical properties they restore is the "
         "conceptual core of the method, and is summarised in the table below."
     )
 
@@ -1313,27 +1406,27 @@ def build_report(results_dir: Path, figures_dir: Path, out_path: Path,
     w.table(
         ["Loss term", "Classical property restored", "How it is restored", "Paper's framing"],
         [
-            ["L_rec", "Faithful (low-rank) reconstruction",
+            ["$L_{\\mathrm{rec}}$", "Faithful (low-rank) reconstruction",
              "Mean squared error between input and decoder output, minimised over "
              "the whole batch.",
              "The autoencoder provides a non-linear generalisation of the "
              "rank-limited linear reconstruction of PCA."],
-            ["L_ort", "Orthogonality of the components (PCA)",
+            ["$L_{\\mathrm{ort}}$", "Orthogonality of the components (PCA)",
              "Penalises the squared off-diagonal entries of the Gram matrix "
-             "S = Z^T Z of the L2-normalised latent codes.",
+             "$S = Z^{T} Z$ of the L2-normalised latent codes.",
              "Forces the latent components to be mutually decorrelated, as the "
              "principal components of PCA are."],
-            ["L_com", "Variance ordering of the components (PCA)",
+            ["$L_{\\mathrm{com}}$", "Variance ordering of the components (PCA)",
              "Weights the per-component variance by the increasing index "
-             "i^(1+eps) and normalises by the total variance.",
+             "$i^{1+\\varepsilon}$ and normalises by the total variance.",
              "Produces a centre-of-mass ordering in which the leading latent "
              "component carries the largest share of the variance."],
-            ["L_var", "Well-posedness of the ordering (PCA)",
+            ["$L_{\\mathrm{var}}$", "Well-posedness of the ordering (PCA)",
              "Sums the per-component variances, providing the normaliser of "
-             "L_com and a floor on the latent energy.",
+             "$L_{\\mathrm{com}}$ and a floor on the latent energy.",
              "Prevents the centre-of-mass term from being minimised by collapsing "
              "the latent code."],
-            ["L_class", "Class separability (LDA)",
+            ["$L_{\\mathrm{class}}$", "Class separability (LDA)",
              "Cross-entropy on the class scores computed from the latent code; "
              "exactly zero in unsupervised mode.",
              "Switches the objective from the PCA-like unsupervised mode to the "
@@ -1344,33 +1437,39 @@ def build_report(results_dir: Path, figures_dir: Path, out_path: Path,
 
     w.h2("2.3 The mathematics")
     w.body(
-        "Let Z be the (N x n) matrix whose rows are the latent codes z_1, ..., z_N of "
-        "a batch of N samples, where n is the latent dimensionality. Let Z-hat "
-        "denote the matrix of L2-normalised latent codes, z-hat_i = z_i / ||z_i||_2, "
-        "obtained by normalising each latent vector along the feature axis. Let mu_i "
-        "denote the mean of component i over the batch. The five terms are defined "
-        "as follows."
+        "Let $Z$ be the $(N \\times n)$ matrix whose rows are the latent codes "
+        "$z_1, \\dots, z_N$ of a batch of $N$ samples, where $n$ is the latent "
+        "dimensionality. Let $\\hat{Z}$ denote the matrix of L2-normalised latent "
+        "codes, $\\hat{z}_i = z_i / \\lVert z_i \\rVert_2$, obtained by normalising "
+        "each latent vector along the feature axis. Let $\\mu_i$ denote the mean of "
+        "component $i$ over the batch. The five terms are defined as follows."
     )
     w.formula(
-        "L_rec   =  mean( ( x_hat - x )^2 )",
+        r"L_{\mathrm{rec}} \;=\; \mathrm{mean}\!\left( (\hat{x} - x)^{2} \right)",
         "The reconstruction term: the mean squared error over all elements between "
         "the decoder output and the input.",
     )
     w.formula(
-        "L_ort   =  ( 2 / ( n * (n - 1) ) )  *  SUM_{i < j}  S_ij^2 ,        S = Z_hat^T Z_hat",
+        r"L_{\mathrm{ort}} \;=\; \frac{2}{n\,(n-1)} "
+        r"\sum_{1 \leq i < j \leq n} { S_{ij}^{2} }"
+        r"\;,\qquad S = \hat{Z}^{T}\hat{Z}",
         "The orthogonality term. The sum runs over the strict upper triangle of S, "
         "so each unordered pair of latent components is counted exactly once; the "
         "prefactor 2/(n(n-1)) converts that sum into the mean squared off-diagonal "
-        "entry. A perfectly decorrelated latent space has S = I and therefore "
-        "L_ort = 0.",
+        "entry. A perfectly decorrelated latent space has $S = I$ and therefore "
+        "$L_{\\mathrm{ort}} = 0$.",
     )
     w.formula(
-        "L_var   =  SUM_{i=0}^{n-1}  E[ ( z_i - mu_i )^2 ]",
+        r"L_{\mathrm{var}} \;=\; \sum_{i=0}^{n-1} "
+        r"{ \mathbb{E}\!\left[ ( z_{i} - \mu_{i} )^{2} \right] }",
         "The variance term: the sum of the per-component variances of the latent "
         "codes over the batch, using the population estimator (division by N).",
     )
     w.formula(
-        "L_com   =  ( SUM_{i=0}^{n-1}  i^(1+eps) * E[ ( z_i - mu_i )^2 ] )  /  ( n * L_var ) ,    eps = 0.25",
+        r"L_{\mathrm{com}} \;=\; \frac{ \sum_{i=0}^{n-1} "
+        r"{ i^{1+\varepsilon}\, \mathbb{E}\!\left[ ( z_{i} - \mu_{i} )^{2} \right] } }"
+        r"{ n\, L_{\mathrm{var}} }"
+        r"\;,\qquad \varepsilon = 0.25",
         "The centre-of-mass term. The per-component variances are weighted by the "
         "increasing index i^(1+eps) and divided by the total variance L_var. "
         "Because the weights grow with the component index, the term is small when "
@@ -1378,7 +1477,8 @@ def build_report(results_dir: Path, figures_dir: Path, out_path: Path,
         "ordering - and large when it increases.",
     )
     w.formula(
-        "L_class =  CrossEntropy( logits(z) , y )        ( = 0 when no labels are supplied )",
+        r"L_{\mathrm{class}} \;=\; \mathrm{CrossEntropy}\!\left( \mathrm{logits}(z),\, y \right)"
+        r"\qquad \left( = 0 \text{ when no labels are supplied} \right)",
         "The optional classification term. It is present only in the supervised "
         "mode, in which the latent code is fed to a linear head and the "
         "cross-entropy is back-propagated into the encoder.",
@@ -1386,21 +1486,23 @@ def build_report(results_dir: Path, figures_dir: Path, out_path: Path,
     w.body(
         "Two implementation conventions must be stated, because the paper does not "
         "make them unambiguous and they change the value of the objective. First, "
-        "the expectation E[.] is realised as the population variance over the batch "
-        "rather than the unbiased sample variance. Second, the component index in "
-        "L_com runs from i = 0 to n-1, which assigns a weight of exactly zero to "
-        "the first latent component because 0^(1+eps) = 0; the first component is "
-        "therefore excluded from the ordering pressure. This was flagged during "
-        "review rather than silently changed, since altering the index base would "
-        "change the objective relative to the paper."
+        "the expectation $\\mathbb{E}[\\cdot]$ is realised as the population variance "
+        "over the batch rather than the unbiased sample variance. Second, the "
+        "component index in $L_{\\mathrm{com}}$ runs from $i = 0$ to $n-1$, which "
+        "assigns a weight of exactly zero to the first latent component because "
+        "$0^{1+\\varepsilon} = 0$; the first component is therefore excluded from "
+        "the ordering pressure. This was flagged during review rather than silently "
+        "changed, since altering the index base would change the objective relative "
+        "to the paper."
     )
     w.body(
         "A third convention concerns the axis along which the latent codes are "
-        "L2-normalised before S is formed. The normalisation is applied to each "
+        "L2-normalised before $S$ is formed. The normalisation is applied to each "
         "latent vector along the feature axis, which leaves the batch axis intact; "
         "normalising along the batch axis instead would produce a matrix whose "
-        "entries have an entirely different meaning and would make L_ort almost "
-        "independent of the actual correlations between latent components."
+        "entries have an entirely different meaning and would make "
+        "$L_{\\mathrm{ort}}$ almost independent of the actual correlations between "
+        "latent components."
     )
 
     w.h2("2.4 Architecture")
@@ -1616,21 +1718,21 @@ def build_report(results_dir: Path, figures_dir: Path, out_path: Path,
         "counts each unordered pair twice and inflates the loss by a factor of two "
         "relative to the paper's sum over i < j. The check that exposed it was the "
         "analytic one: a fully correlated batch of identical rows must give "
-        "L_ort = 2/(n(n-1)) * n(n-1) = 2, and the defective code produced "
-        "approximately 1.22 instead. The fix is to take the strict upper triangle "
-        "of the Gram matrix, which the implementation of src/polca/losses.py now "
-        "does explicitly.",
+        "$L_{\\mathrm{ort}} = \\frac{2}{n(n-1)} \\, n(n-1) = 2$, and the defective "
+        "code produced approximately 1.22 instead. The fix is to take the strict "
+        "upper triangle of the Gram matrix, which the implementation of "
+        "src/polca/losses.py now does explicitly.",
         "Division by a degenerate total variance. When every latent component is "
-        "constant across the batch, L_var is exactly zero and the centre-of-mass "
-        "term becomes a NaN. The guard added to the implementation clamps the "
-        "denominator to a small positive floor, so the term degrades to zero "
-        "instead of exploding. The same class of check was applied to the "
-        "orthogonality term, where the case n < 2 must return zero rather than "
-        "divide by n(n-1) = 0.",
+        "constant across the batch, $L_{\\mathrm{var}}$ is exactly zero and the "
+        "centre-of-mass term becomes a NaN. The guard added to the implementation "
+        "clamps the denominator to a small positive floor, so the term degrades to "
+        "zero instead of exploding. The same class of check was applied to the "
+        "orthogonality term, where the case $n < 2$ must return zero rather than "
+        "divide by $n(n-1) = 0$.",
         "Normalising the wrong axis. An early version of the helper that forms "
         "the Gram matrix normalised along the batch axis rather than along the "
         "feature axis, which normalises each column across samples instead of each "
-        "latent vector. The resulting S is a meaningful-looking matrix that has "
+        "latent vector. The resulting $S$ is a meaningful-looking matrix that has "
         "nothing to do with the inner products between latent components, and the "
         "orthogonality loss became nearly independent of the actual correlations. "
         "The control experiment - a strongly correlated batch must produce a large "
@@ -1807,18 +1909,32 @@ def build_report(results_dir: Path, figures_dir: Path, out_path: Path,
         "normalised root mean squared error divides the root mean squared error by "
         "the range of the reference data, so it is invariant to the scaling of the "
         "images and is the primary measure of the reconstruction error. The peak "
-        "signal-to-noise ratio is computed as 10 log10(1 / MSE) for data in the "
-        "unit interval, and rewards the fidelity of the pixel values themselves "
-        "rather than their aggregate error. The structural similarity index "
-        "measures the preservation of local luminance, contrast and structure, and "
-        "is the metric that responds most directly to the perceptual quality of a "
-        "reconstruction. It follows the original definition of Wang et al. [13] and "
-        "is computed with a batched, vectorised re-implementation of the "
-        "scikit-image [14] reference algorithm - the same uniform 7 x 7 window, the "
-        "same sample-covariance normalisation and the same border cropping - which "
-        "agrees with the reference implementation to within 1e-16 and is several "
-        "thousand times faster; a self-contained Gaussian-window implementation of "
-        "the standard formula is kept as a fallback for environments without SciPy."
+        "signal-to-noise ratio is computed from the mean squared error, and rewards "
+        "the fidelity of the pixel values themselves rather than their aggregate "
+        "error. The structural similarity index measures the preservation of local "
+        "luminance, contrast and structure, and is the metric that responds most "
+        "directly to the perceptual quality of a reconstruction. It follows the "
+        "original definition of Wang et al. [13] and is computed with a batched, "
+        "vectorised re-implementation of the scikit-image [14] reference algorithm - "
+        "the same uniform 7 x 7 window, the same sample-covariance normalisation "
+        "and the same border cropping - which agrees with the reference "
+        "implementation to within 1e-16 and is several thousand times faster; a "
+        "self-contained Gaussian-window implementation of the standard formula is "
+        "kept as a fallback for environments without SciPy."
+    )
+    w.formula(
+        r"\mathrm{NRMSE} \;=\; \frac{ \mathrm{RMSE} }"
+        r"{ \max(x) - \min(x) }"
+        r"\;,\qquad \mathrm{RMSE} \;=\; \sqrt{ \frac{1}{M} \sum_{k=1}^{M}"
+        r" ( x_{k} - \hat{x}_{k} )^{2} }",
+        "The normalised root mean squared error, where $M$ is the number of "
+        "reconstructed elements and the range is taken over the original signal.",
+    )
+    w.formula(
+        r"\mathrm{PSNR} \;=\; 10 \log_{10}\!\left("
+        r"\frac{ R^{2} }{ \mathrm{MSE} } \right)"
+        r"\;,\qquad R = 1 \text{ for data in the unit interval}",
+        "The peak signal-to-noise ratio in decibels.",
     )
     w.body(
         "Downstream usefulness of the latent space is measured by accuracy and "
@@ -1833,12 +1949,13 @@ def build_report(results_dir: Path, figures_dir: Path, out_path: Path,
     )
     w.body(
         "Two additional diagnostics measure the PCA-like properties directly. The "
-        "orthogonality error is the same quantity as L_ort but computed in NumPy "
-        "and reported for the test split; it is zero for a perfectly decorrelated "
-        "latent space. The variance-ordering score is a rank correlation between "
-        "the component index and the component variance, taking the value +1 when "
-        "the variance decreases monotonically along the latent dimensions, which is "
-        "the PCA ordering, -1 when it increases, and 0 when the two are unrelated."
+        "orthogonality error is the same quantity as $L_{\\mathrm{ort}}$ but computed "
+        "in NumPy and reported for the test split; it is zero for a perfectly "
+        "decorrelated latent space. The variance-ordering score is a rank "
+        "correlation between the component index and the component variance, "
+        "taking the value $+1$ when the variance decreases monotonically along the "
+        "latent dimensions, which is the PCA ordering, $-1$ when it increases, and "
+        "$0$ when the two are unrelated."
     )
 
     w.h2("4.5 Results")
@@ -1909,11 +2026,11 @@ def build_report(results_dir: Path, figures_dir: Path, out_path: Path,
     w.body(
         "The ablation isolates the contribution of each of the three POLCA "
         "regularisers by removing exactly one of them and re-training the model "
-        "with everything else unchanged. Removing L_ort is expected to destroy the "
-        "orthogonality of the latent space while leaving reconstruction quality "
-        "essentially intact; removing L_com removes the variance ordering; removing "
-        "L_var removes the normaliser that keeps the centre-of-mass term "
-        "well-posed."
+        "with everything else unchanged. Removing $L_{\\mathrm{ort}}$ is expected to "
+        "destroy the orthogonality of the latent space while leaving reconstruction "
+        "quality essentially intact; removing $L_{\\mathrm{com}}$ removes the "
+        "variance ordering; removing $L_{\\mathrm{var}}$ removes the normaliser that "
+        "keeps the centre-of-mass term well-posed."
     )
     abl = res.ablation_rows()
     if not abl:

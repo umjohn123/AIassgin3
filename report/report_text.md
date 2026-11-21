@@ -96,37 +96,37 @@ The limitation shared by both methods is linearity. PCA's solution is the eigenb
 2.2 POLCA Net: the idea
 POLCA Net [4] is an autoencoder whose training objective is a weighted sum of five elementary terms, each of which restores one of the properties of classical PCA or LDA inside the non-linear latent space. The composite objective is
 
-    L_polca  =  L_rec  +  L_class  +  alpha * L_ort  +  beta * L_com  +  gamma * L_var
-where L_rec is the reconstruction error, L_class is an optional cross-entropy term that switches the model into its supervised, LDA-like mode, L_ort is the latent orthogonality penalty, L_com is the centre-of-mass term that imposes the variance ordering, and L_var is a variance regulariser that keeps the previous term well-posed. The mapping between the loss terms and the classical properties they restore is the conceptual core of the method, and is summarised in the table below.
+    L_{\mathrm{polca}} \;=\; L_{\mathrm{rec}} \;+\; L_{\mathrm{class}} \;+\; \alpha\, L_{\mathrm{ort}} \;+\; \beta\, L_{\mathrm{com}} \;+\; \gamma\, L_{\mathrm{var}}
+where $L_{\mathrm{rec}}$ is the reconstruction error, $L_{\mathrm{class}}$ is an optional cross-entropy term that switches the model into its supervised, LDA-like mode, $L_{\mathrm{ort}}$ is the latent orthogonality penalty, $L_{\mathrm{com}}$ is the centre-of-mass term that imposes the variance ordering, and $L_{\mathrm{var}}$ is a variance regulariser that keeps the previous term well-posed. The mapping between the loss terms and the classical properties they restore is the conceptual core of the method, and is summarised in the table below.
 Table 4. Correspondence between the POLCA Net loss terms and the classical PCA/LDA properties they restore.
 
 | Loss term | Classical property restored | How it is restored | Paper's framing |
 | --- | --- | --- | --- |
-| L_rec | Faithful (low-rank) reconstruction | Mean squared error between input and decoder output, minimised over the whole batch. | The autoencoder provides a non-linear generalisation of the rank-limited linear reconstruction of PCA. |
-| L_ort | Orthogonality of the components (PCA) | Penalises the squared off-diagonal entries of the Gram matrix S = Z^T Z of the L2-normalised latent codes. | Forces the latent components to be mutually decorrelated, as the principal components of PCA are. |
-| L_com | Variance ordering of the components (PCA) | Weights the per-component variance by the increasing index i^(1+eps) and normalises by the total variance. | Produces a centre-of-mass ordering in which the leading latent component carries the largest share of the variance. |
-| L_var | Well-posedness of the ordering (PCA) | Sums the per-component variances, providing the normaliser of L_com and a floor on the latent energy. | Prevents the centre-of-mass term from being minimised by collapsing the latent code. |
-| L_class | Class separability (LDA) | Cross-entropy on the class scores computed from the latent code; exactly zero in unsupervised mode. | Switches the objective from the PCA-like unsupervised mode to the LDA-like supervised mode. |
+| $L_{\mathrm{rec}}$ | Faithful (low-rank) reconstruction | Mean squared error between input and decoder output, minimised over the whole batch. | The autoencoder provides a non-linear generalisation of the rank-limited linear reconstruction of PCA. |
+| $L_{\mathrm{ort}}$ | Orthogonality of the components (PCA) | Penalises the squared off-diagonal entries of the Gram matrix $S = Z^{T} Z$ of the L2-normalised latent codes. | Forces the latent components to be mutually decorrelated, as the principal components of PCA are. |
+| $L_{\mathrm{com}}$ | Variance ordering of the components (PCA) | Weights the per-component variance by the increasing index $i^{1+\varepsilon}$ and normalises by the total variance. | Produces a centre-of-mass ordering in which the leading latent component carries the largest share of the variance. |
+| $L_{\mathrm{var}}$ | Well-posedness of the ordering (PCA) | Sums the per-component variances, providing the normaliser of $L_{\mathrm{com}}$ and a floor on the latent energy. | Prevents the centre-of-mass term from being minimised by collapsing the latent code. |
+| $L_{\mathrm{class}}$ | Class separability (LDA) | Cross-entropy on the class scores computed from the latent code; exactly zero in unsupervised mode. | Switches the objective from the PCA-like unsupervised mode to the LDA-like supervised mode. |
 
 2.3 The mathematics
-Let Z be the (N x n) matrix whose rows are the latent codes z_1, ..., z_N of a batch of N samples, where n is the latent dimensionality. Let Z-hat denote the matrix of L2-normalised latent codes, z-hat_i = z_i / ||z_i||_2, obtained by normalising each latent vector along the feature axis. Let mu_i denote the mean of component i over the batch. The five terms are defined as follows.
+Let $Z$ be the $(N \times n)$ matrix whose rows are the latent codes $z_1, \dots, z_N$ of a batch of $N$ samples, where $n$ is the latent dimensionality. Let $\hat{Z}$ denote the matrix of L2-normalised latent codes, $\hat{z}_i = z_i / \lVert z_i \rVert_2$, obtained by normalising each latent vector along the feature axis. Let $\mu_i$ denote the mean of component $i$ over the batch. The five terms are defined as follows.
 
-    L_rec   =  mean( ( x_hat - x )^2 )
+    L_{\mathrm{rec}} \;=\; \mathrm{mean}\!\left( (\hat{x} - x)^{2} \right)
 The reconstruction term: the mean squared error over all elements between the decoder output and the input.
 
-    L_ort   =  ( 2 / ( n * (n - 1) ) )  *  SUM_{i < j}  S_ij^2 ,        S = Z_hat^T Z_hat
-The orthogonality term. The sum runs over the strict upper triangle of S, so each unordered pair of latent components is counted exactly once; the prefactor 2/(n(n-1)) converts that sum into the mean squared off-diagonal entry. A perfectly decorrelated latent space has S = I and therefore L_ort = 0.
+    L_{\mathrm{ort}} \;=\; \frac{2}{n\,(n-1)} \sum_{1 \leq i < j \leq n} { S_{ij}^{2} }\;,\qquad S = \hat{Z}^{T}\hat{Z}
+The orthogonality term. The sum runs over the strict upper triangle of S, so each unordered pair of latent components is counted exactly once; the prefactor 2/(n(n-1)) converts that sum into the mean squared off-diagonal entry. A perfectly decorrelated latent space has $S = I$ and therefore $L_{\mathrm{ort}} = 0$.
 
-    L_var   =  SUM_{i=0}^{n-1}  E[ ( z_i - mu_i )^2 ]
+    L_{\mathrm{var}} \;=\; \sum_{i=0}^{n-1} { \mathbb{E}\!\left[ ( z_{i} - \mu_{i} )^{2} \right] }
 The variance term: the sum of the per-component variances of the latent codes over the batch, using the population estimator (division by N).
 
-    L_com   =  ( SUM_{i=0}^{n-1}  i^(1+eps) * E[ ( z_i - mu_i )^2 ] )  /  ( n * L_var ) ,    eps = 0.25
+    L_{\mathrm{com}} \;=\; \frac{ \sum_{i=0}^{n-1} { i^{1+\varepsilon}\, \mathbb{E}\!\left[ ( z_{i} - \mu_{i} )^{2} \right] } }{ n\, L_{\mathrm{var}} }\;,\qquad \varepsilon = 0.25
 The centre-of-mass term. The per-component variances are weighted by the increasing index i^(1+eps) and divided by the total variance L_var. Because the weights grow with the component index, the term is small when the variance decreases along the latent dimensions - the PCA-like ordering - and large when it increases.
 
-    L_class =  CrossEntropy( logits(z) , y )        ( = 0 when no labels are supplied )
+    L_{\mathrm{class}} \;=\; \mathrm{CrossEntropy}\!\left( \mathrm{logits}(z),\, y \right)\qquad \left( = 0 \text{ when no labels are supplied} \right)
 The optional classification term. It is present only in the supervised mode, in which the latent code is fed to a linear head and the cross-entropy is back-propagated into the encoder.
-Two implementation conventions must be stated, because the paper does not make them unambiguous and they change the value of the objective. First, the expectation E[.] is realised as the population variance over the batch rather than the unbiased sample variance. Second, the component index in L_com runs from i = 0 to n-1, which assigns a weight of exactly zero to the first latent component because 0^(1+eps) = 0; the first component is therefore excluded from the ordering pressure. This was flagged during review rather than silently changed, since altering the index base would change the objective relative to the paper.
-A third convention concerns the axis along which the latent codes are L2-normalised before S is formed. The normalisation is applied to each latent vector along the feature axis, which leaves the batch axis intact; normalising along the batch axis instead would produce a matrix whose entries have an entirely different meaning and would make L_ort almost independent of the actual correlations between latent components.
+Two implementation conventions must be stated, because the paper does not make them unambiguous and they change the value of the objective. First, the expectation $\mathbb{E}[\cdot]$ is realised as the population variance over the batch rather than the unbiased sample variance. Second, the component index in $L_{\mathrm{com}}$ runs from $i = 0$ to $n-1$, which assigns a weight of exactly zero to the first latent component because $0^{1+\varepsilon} = 0$; the first component is therefore excluded from the ordering pressure. This was flagged during review rather than silently changed, since altering the index base would change the objective relative to the paper.
+A third convention concerns the axis along which the latent codes are L2-normalised before $S$ is formed. The normalisation is applied to each latent vector along the feature axis, which leaves the batch axis intact; normalising along the batch axis instead would produce a matrix whose entries have an entirely different meaning and would make $L_{\mathrm{ort}}$ almost independent of the actual correlations between latent components.
 
 2.4 Architecture
 The network itself is deliberately unremarkable: a symmetric multi-layer perceptron autoencoder. The encoder maps the flattened input of dimension d_in to a latent code of dimension n through a stack of hidden layers with rectified-linear activations; the decoder maps the latent code back to d_in. The forward pass returns the pair (reconstruction, latent), and the encode and decode operations are also exposed separately so that latent codes can be extracted for the downstream classification experiment.
@@ -189,10 +189,11 @@ AIassgin3/
 |-- report/
 |   |-- figures/
 |   |-- .gitkeep
-|   |-- AI_Assignment3_Report.docx  (1183 KB, omitted)
-|   |-- AI_Assignment3_Report.pdf  (1538 KB, omitted)
+|   |-- AI_Assignment3_Report.docx  (1184 KB, omitted)
+|   |-- AI_Assignment3_Report.pdf  (1611 KB, omitted)
 |   |-- build_report.py
 |   |-- docx_to_pdf.py
+|   |-- math_render.py
 |   |-- report_text.md
 |   |-- site_config.json
 |   |-- sync_site_assets.py
@@ -255,12 +256,22 @@ AIassgin3/
 |-- .gitignore
 |-- AI_PROMPTS.md
 |-- b.txt
+|-- check_math.py
+|-- eq10.png
+|-- eq9.png
+|-- eq_composite.png
+|-- eq_prose.png
+|-- inspect_math.py
 |-- merge_results.py
+|-- p.txt
+|-- page10.png
+|-- page9.png
 |-- README.md
 |-- regen_summary.py
 |-- requirements.txt
 |-- run_all.py
-`-- run_large.py
+|-- run_large.py
+`-- test_math.py
 ```
 
 3.3 Key implementation excerpts
@@ -466,9 +477,9 @@ Two details in these excerpts deserve comment. The normalisation of the latent c
 3.4 The verification and correction loop
 After generation, the agent was instructed to write and run a verification script that checks, in a fixed order, the shape sanity of the forward pass for several input and latent dimensionalities; the orthogonality sanity, in which a batch of exactly orthogonal latent vectors must produce a loss below a tight tolerance and a batch of identical rows must produce a loss of the order of two; the variance-ordering sanity, in which a decreasing-variance code must score better than its reverse; and a smoke test in which the training loop is run for a few hundred updates and the loss must decrease and a metrics file must be written. A later round added a gradient-coverage check, requiring that at least ninety per cent of the encoder parameters receive a finite non-zero gradient, and a determinism check, requiring that two runs with the same seed agree to within 1e-6.
 The checks did not pass on the first attempt, and the failures are informative because every one of them produced code that ran. A summary follows; where a defect could be confirmed from the repository it is stated concretely, and where the repository alone does not settle the matter it is described as a class of defect that the checks were designed to catch.
-  - Double-counting of the symmetric off-diagonal. An implementation that summed over all ordered pairs i not equal to j and then multiplied by two counts each unordered pair twice and inflates the loss by a factor of two relative to the paper's sum over i < j. The check that exposed it was the analytic one: a fully correlated batch of identical rows must give L_ort = 2/(n(n-1)) * n(n-1) = 2, and the defective code produced approximately 1.22 instead. The fix is to take the strict upper triangle of the Gram matrix, which the implementation of src/polca/losses.py now does explicitly.
-  - Division by a degenerate total variance. When every latent component is constant across the batch, L_var is exactly zero and the centre-of-mass term becomes a NaN. The guard added to the implementation clamps the denominator to a small positive floor, so the term degrades to zero instead of exploding. The same class of check was applied to the orthogonality term, where the case n < 2 must return zero rather than divide by n(n-1) = 0.
-  - Normalising the wrong axis. An early version of the helper that forms the Gram matrix normalised along the batch axis rather than along the feature axis, which normalises each column across samples instead of each latent vector. The resulting S is a meaningful-looking matrix that has nothing to do with the inner products between latent components, and the orthogonality loss became nearly independent of the actual correlations. The control experiment - a strongly correlated batch must produce a large loss - is what detected it.
+  - Double-counting of the symmetric off-diagonal. An implementation that summed over all ordered pairs i not equal to j and then multiplied by two counts each unordered pair twice and inflates the loss by a factor of two relative to the paper's sum over i < j. The check that exposed it was the analytic one: a fully correlated batch of identical rows must give $L_{\mathrm{ort}} = \frac{2}{n(n-1)} \, n(n-1) = 2$, and the defective code produced approximately 1.22 instead. The fix is to take the strict upper triangle of the Gram matrix, which the implementation of src/polca/losses.py now does explicitly.
+  - Division by a degenerate total variance. When every latent component is constant across the batch, $L_{\mathrm{var}}$ is exactly zero and the centre-of-mass term becomes a NaN. The guard added to the implementation clamps the denominator to a small positive floor, so the term degrades to zero instead of exploding. The same class of check was applied to the orthogonality term, where the case $n < 2$ must return zero rather than divide by $n(n-1) = 0$.
+  - Normalising the wrong axis. An early version of the helper that forms the Gram matrix normalised along the batch axis rather than along the feature axis, which normalises each column across samples instead of each latent vector. The resulting $S$ is a meaningful-looking matrix that has nothing to do with the inner products between latent components, and the orthogonality loss became nearly independent of the actual correlations. The control experiment - a strongly correlated batch must produce a large loss - is what detected it.
   - A library API that cannot express the requested configuration. The scikit-learn LDA baseline cannot be fitted with more components than there are features under the default solver, and the alternatives break in different ways at the boundary. The implementation clamps the number of components to the number of classes minus one and uses the least-squares solver with automatic shrinkage, which regularises the covariance estimate and permits the boundary case.
   - Environment and packaging defects of the same class. The torchvision dataset cache directory was resolved relative to the wrong working directory, so the downloader looked for the raw files under a different path than the one it had written them to; the root is now made absolute. The matplotlib backend was interactive on this headless machine and produced blank figures, so the Agg backend is now selected explicitly before pyplot is imported. The export of this document to PDF is performed through the Microsoft Word COM interface, since no LibreOffice or pandoc installation is available on the machine; the helper falls back with an explicit message when Word cannot be reached.
   - A documentation defect that was deliberately not 'fixed'. The zero-based component index in the centre-of-mass term gives the first latent component a weight of zero. The reviewer could have re-based the index to start at one, which would arguably be more faithful to the intent of the paper, but that would change the objective relative to the published formulation. The convention was therefore documented explicitly instead of silently changed, and it is reported in Section 4 as an implementation note.
@@ -526,9 +537,15 @@ Table 7. Training configuration and software environment.
 | Plotting | Matplotlib 3.11.2 (Agg backend, headless Windows) |
 
 4.4 Evaluation metrics
-Reconstruction quality is measured with three complementary metrics. The normalised root mean squared error divides the root mean squared error by the range of the reference data, so it is invariant to the scaling of the images and is the primary measure of the reconstruction error. The peak signal-to-noise ratio is computed as 10 log10(1 / MSE) for data in the unit interval, and rewards the fidelity of the pixel values themselves rather than their aggregate error. The structural similarity index measures the preservation of local luminance, contrast and structure, and is the metric that responds most directly to the perceptual quality of a reconstruction. It follows the original definition of Wang et al. [13] and is computed with a batched, vectorised re-implementation of the scikit-image [14] reference algorithm - the same uniform 7 x 7 window, the same sample-covariance normalisation and the same border cropping - which agrees with the reference implementation to within 1e-16 and is several thousand times faster; a self-contained Gaussian-window implementation of the standard formula is kept as a fallback for environments without SciPy.
+Reconstruction quality is measured with three complementary metrics. The normalised root mean squared error divides the root mean squared error by the range of the reference data, so it is invariant to the scaling of the images and is the primary measure of the reconstruction error. The peak signal-to-noise ratio is computed from the mean squared error, and rewards the fidelity of the pixel values themselves rather than their aggregate error. The structural similarity index measures the preservation of local luminance, contrast and structure, and is the metric that responds most directly to the perceptual quality of a reconstruction. It follows the original definition of Wang et al. [13] and is computed with a batched, vectorised re-implementation of the scikit-image [14] reference algorithm - the same uniform 7 x 7 window, the same sample-covariance normalisation and the same border cropping - which agrees with the reference implementation to within 1e-16 and is several thousand times faster; a self-contained Gaussian-window implementation of the standard formula is kept as a fallback for environments without SciPy.
+
+    \mathrm{NRMSE} \;=\; \frac{ \mathrm{RMSE} }{ \max(x) - \min(x) }\;,\qquad \mathrm{RMSE} \;=\; \sqrt{ \frac{1}{M} \sum_{k=1}^{M} ( x_{k} - \hat{x}_{k} )^{2} }
+The normalised root mean squared error, where $M$ is the number of reconstructed elements and the range is taken over the original signal.
+
+    \mathrm{PSNR} \;=\; 10 \log_{10}\!\left(\frac{ R^{2} }{ \mathrm{MSE} } \right)\;,\qquad R = 1 \text{ for data in the unit interval}
+The peak signal-to-noise ratio in decibels.
 Downstream usefulness of the latent space is measured by accuracy and macro-averaged F1 obtained by fitting four linear classifiers - Perceptron, Ridge classifier, Logistic Regression and Linear SVM - on the latent codes of the training split and evaluating them on the latent codes of the test split. The use of linear classifiers only is deliberate: it asks whether the latent space is as usable by a linear decision boundary as the discriminant space of LDA, and it avoids confounding the quality of the representation with the capacity of the classifier.
-Two additional diagnostics measure the PCA-like properties directly. The orthogonality error is the same quantity as L_ort but computed in NumPy and reported for the test split; it is zero for a perfectly decorrelated latent space. The variance-ordering score is a rank correlation between the component index and the component variance, taking the value +1 when the variance decreases monotonically along the latent dimensions, which is the PCA ordering, -1 when it increases, and 0 when the two are unrelated.
+Two additional diagnostics measure the PCA-like properties directly. The orthogonality error is the same quantity as $L_{\mathrm{ort}}$ but computed in NumPy and reported for the test split; it is zero for a perfectly decorrelated latent space. The variance-ordering score is a rank correlation between the component index and the component variance, taking the value $+1$ when the variance decreases monotonically along the latent dimensions, which is the PCA ordering, $-1$ when it increases, and $0$ when the two are unrelated.
 
 4.5 Results
 The table below reports the mean over the available seeds for each (dataset, method) pair. The accuracy and F1 columns are the means over the four linear classifiers, so that a single number describes the general usability of the latent space rather than the behaviour of one particular classifier.
@@ -573,7 +590,7 @@ Table 9. PCA-property diagnostics of the learned latent spaces.
 | FashionMNIST | POLCA Net (supervised) | 0.2077 | 0.3254 |
 
 4.6 Ablation study
-The ablation isolates the contribution of each of the three POLCA regularisers by removing exactly one of them and re-training the model with everything else unchanged. Removing L_ort is expected to destroy the orthogonality of the latent space while leaving reconstruction quality essentially intact; removing L_com removes the variance ordering; removing L_var removes the normaliser that keeps the centre-of-mass term well-posed.
+The ablation isolates the contribution of each of the three POLCA regularisers by removing exactly one of them and re-training the model with everything else unchanged. Removing $L_{\mathrm{ort}}$ is expected to destroy the orthogonality of the latent space while leaving reconstruction quality essentially intact; removing $L_{\mathrm{com}}$ removes the variance ordering; removing $L_{\mathrm{var}}$ removes the normaliser that keeps the centre-of-mass term well-posed.
 Table 10. Ablation of the POLCA Net regularisers, one term removed at a time.
 
 | Dataset | Variant | NRMSE | PSNR | SSIM | Accuracy | F1 | Orth. error | Var. ordering |
