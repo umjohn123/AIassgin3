@@ -229,6 +229,68 @@ check("every inline symbol is on the page", not _missing_inline, str(_missing_in
 # mathematics: the whole point of MathML is that the browser draws it.
 check("no external maths dependency", "mathjax" not in html.lower() and "katex" not in html.lower())
 
+print("\n== Site mathematics: structure ==")
+# MathML Core fixes the arity of its elements.  An element with the wrong
+# number of children is not rendered as intended: the browser flattens the
+# limits of a summation into a row of symbols beside the sign, and a
+# fraction spills its denominator out of the fraction.  Every element on
+# the page therefore has to have exactly the children it requires.
+ARITY = {
+    "mfrac": 2, "msqrt": 1, "msub": 2, "msup": 2, "msubsup": 3,
+    "munder": 2, "mover": 2, "munderover": 3,
+}
+
+
+def _child_count(inner: str) -> int:
+    """The number of direct children of a piece of MathML markup."""
+    depth = 0
+    count = 0
+    for token in re.finditer(r"<(/?)(\w+)[^>]*?(/?)>", inner):
+        closing, _name, selfclose = token.groups()
+        if closing:
+            depth -= 1
+        elif selfclose:
+            continue
+        else:
+            if depth == 0:
+                count += 1
+            depth += 1
+    return count
+
+
+_arity_errors = []
+for _tag, _expected in ARITY.items():
+    for _match in re.finditer(rf"<{_tag}\b[^>]*>(.*?)</{_tag}>", html, re.S):
+        _got = _child_count(_match.group(1))
+        if _got != _expected:
+            _arity_errors.append(f"<{_tag}> has {_got} children, expected {_expected}")
+check(
+    "every MathML element has the right number of children",
+    not _arity_errors,
+    "; ".join(sorted(set(_arity_errors))[:4]),
+)
+# The limits of a big operator are stacked, not set beside the sign.
+check(
+    "summation limits are stacked",
+    "<munderover><mo" in html or "<munder><mo" in html,
+)
+check(
+    "big operators are marked as large operators",
+    'largeop="true"' in html,
+)
+# The equations are numbered, the way a printed paper numbers them.
+_numbered = re.findall(r'<span class="equation-number">\((\d+)\)</span>', html)
+check(
+    f"{expected_display} numbered equations",
+    len(_numbered) == expected_display,
+    f"{len(_numbered)} found",
+)
+check(
+    "the equations are numbered consecutively",
+    [int(n) for n in _numbered] == list(range(1, expected_display + 1)),
+    str(_numbered),
+)
+
 print("\n== GitHub Pages publishing source ==")
 # GitHub Pages publishes exactly one folder.  The project page lives in
 # ``docs/``, so that folder must be the publishing source; the check makes

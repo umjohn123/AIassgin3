@@ -61,22 +61,45 @@ INLINE_PATTERN = re.compile(
 )
 
 
-def _equation_block(title: str, latex: str, indent: str = "        ") -> str:
-    """One display equation, with its caption."""
+def _equation_block(
+    title: str,
+    latex: str,
+    number: int,
+    indent: str = "        ",
+) -> str:
+    """One display equation, with its number and its caption.
+
+    The number is placed in the right margin by the page's own grid, the
+    way a printed paper does it, rather than being tucked into the
+    caption.
+    """
     math = render_mathml(latex)
     return (
-        f"{indent}<figure class=\"equation\">\n"
-        f"{indent}  <figcaption>{title}</figcaption>\n"
-        f"{indent}  <div class=\"math-display\">\n"
+        f'{indent}<figure class="equation">\n'
+        f'{indent}  <div class="math-display">\n'
         f"{indent}    {math}\n"
         f"{indent}  </div>\n"
+        f'{indent}  <span class="equation-number">({number})</span>\n'
+        f"{indent}  <figcaption>{title}</figcaption>\n"
         f"{indent}</figure>"
     )
 
 
-def build_equations(pairs: Tuple[Tuple[str, str], ...], indent: str = "        ") -> str:
-    """Build the HTML of a block of display equations."""
-    blocks = [_equation_block(title, latex, indent) for title, latex in pairs]
+def build_equations(
+    pairs: Tuple[Tuple[str, str], ...],
+    first_number: int = 1,
+    indent: str = "        ",
+) -> str:
+    """Build the HTML of a block of display equations.
+
+    The equations are numbered continuously across the whole page, so the
+    algorithm block starts at ``first_number`` and the metrics block
+    continues where the algorithm block stopped.
+    """
+    blocks = [
+        _equation_block(title, latex, first_number + offset, indent)
+        for offset, (title, latex) in enumerate(pairs)
+    ]
     return "\n".join(blocks)
 
 
@@ -117,8 +140,12 @@ def render_site(site_path: Path) -> bool:
     html = replace_block(
         html, EQUATION_MARKERS, build_equations(SITE_EQUATIONS)
     )
+    # The equations are numbered continuously across the page, so the
+    # metrics block continues the numbering of the algorithm block.
     html = replace_block(
-        html, METRIC_MARKERS, build_equations(SITE_METRICS)
+        html,
+        METRIC_MARKERS,
+        build_equations(SITE_METRICS, first_number=len(SITE_EQUATIONS) + 1),
     )
     html = replace_inline(html, INLINE)
 

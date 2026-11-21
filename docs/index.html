@@ -117,12 +117,24 @@
      real radicals.  MathML is markup rather than script, so the page stays
      self-contained: no JavaScript, no CDN and no web font, and it renders
      identically online and offline.
+
+     The layout follows a printed paper rather than a set of cards: an
+     equation is a centred display line with its number in the right
+     margin, the caption sits under it in small type, and nothing is
+     boxed.  A grid carries the number to the margin and keeps the
+     equation itself exactly centred in the column, which is what a
+     reader expects from a display equation.
      --------------------------------------------------------------------- */
   math {
+    /* The stack is ordered by how likely the font is to be present and
+       how good it looks: Cambria Math is the maths font of Windows and
+       of Office, Latin Modern Math and STIX Two Math are the free
+       fonts that macOS and Linux installations usually carry, and
+       Times New Roman is the last resort that always exists. */
     font-family: "Latin Modern Math", "STIX Two Math", "Cambria Math",
-                 "Latin Modern", "TeX Gyre Termes Math", "Times New Roman",
-                 serif;
-    font-size: 1.06em;
+                 "Latin Modern", "TeX Gyre Termes Math", "XITS Math",
+                 "Times New Roman", serif;
+    font-size: 1.08em;
     /* MathML is not a text font: it must never be letter-spaced or
        synthesised, or the fraction bars and radicals fall apart. */
     letter-spacing: normal;
@@ -132,26 +144,45 @@
   }
   math[display="block"] {
     display: block;
-    margin: 0.9rem auto;
-    text-align: center;
-    /* An over-long equation scrolls rather than overflowing the card. */
+    margin: 0;
+    /* An over-long equation scrolls rather than overflowing the page. */
     overflow-x: auto;
     overflow-y: hidden;
+    padding: 0.1rem 0;
+  }
+  /* A display equation: the number in the right margin, the equation
+     itself centred in the remaining column. */
+  .equation {
+    display: grid;
+    grid-template-columns: 1fr auto;
+    align-items: center;
+    column-gap: 1rem;
+    margin: 1.5rem 0;
     padding: 0.15rem 0;
   }
-  figure.equation {
-    margin: 0 0 1.4rem;
-    padding: 0.9rem 1rem 1rem;
-    border: 1px solid var(--line);
-    border-left: 3px solid var(--accent);
-    border-radius: 8px;
-    background: var(--bg-soft);
+  .equation > .math-display {
+    grid-column: 1;
+    min-width: 0;
   }
-  figure.equation figcaption {
+  .equation > .equation-number {
+    grid-column: 2;
+    grid-row: 1;
+    color: var(--fg-faint);
+    font-size: 0.9rem;
+    font-variant-numeric: tabular-nums;
+    /* The number is aligned on the baseline of the equation, not on the
+       centre of the line: a display equation with a tall fraction needs
+       its number to sit at the mathematical axis, not halfway up. */
+    align-self: baseline;
+  }
+  .equation > figcaption {
+    grid-column: 1 / -1;
+    grid-row: 2;
     color: var(--fg-faint);
     font-size: 0.82rem;
-    margin: 0 0 0.35rem;
-    text-align: left;
+    line-height: 1.45;
+    margin: 0.5rem 0 0;
+    text-align: center;
   }
   /* An inline symbol keeps the line height of the prose around it. */
   math:not([display="block"]) {
@@ -161,6 +192,18 @@
   /* The fallback text of an inline symbol is only shown when the browser
      cannot render MathML at all. */
   .math-fallback { font-style: italic; }
+  /* On a narrow screen there is no room for a number in the margin, so
+     the number moves onto its own line under the equation. */
+  @media (max-width: 620px) {
+    .equation { grid-template-columns: 1fr; }
+    .equation > .equation-number {
+      grid-column: 1;
+      grid-row: 2;
+      text-align: right;
+      font-size: 0.82rem;
+    }
+    .equation > figcaption { grid-row: 3; }
+  }
 
   table {
     width: 100%; border-collapse: collapse; margin: 0 0 1.25rem;
@@ -279,22 +322,21 @@
 
     <p>
       The five terms of the composite objective
-      <math xmlns="http://www.w3.org/1998/Math/MathML"><msub><mi>L</mi><mtext mathvariant="normal">polca</mtext></msub></math> are written out below. Every equation on
+      <math xmlns="http://www.w3.org/1998/Math/MathML"><msub><mi>L</mi><mrow><mtext mathvariant="normal">polca</mtext></mrow></msub></math> are written out below. Every equation on
       this page is typeset as native MathML, so the browser draws the fraction bars,
       the summation limits and the radicals itself; the page needs no script, no CDN
       and no web font. The equations come from the same module the Word report reads,
       so the document and this page cannot disagree about a formula.
     </p>
-
     <p>
       The notation is the one of the paper. Let
-      <math xmlns="http://www.w3.org/1998/Math/MathML"><mover accent="true"><mi>Z</mi><mo stretchy="false">ˆ</mo></mover></math> be the matrix of the L2-normalised latent
-      codes and <math xmlns="http://www.w3.org/1998/Math/MathML"><mover accent="true"><mi>z</mi><mo stretchy="false">ˆ</mo></mover></math> the normalised code of one
+      <math xmlns="http://www.w3.org/1998/Math/MathML"><mover accent="true"><mrow><mi>Z</mi></mrow><mo stretchy="false">ˆ</mo></mover></math> be the matrix of the L2-normalised latent
+      codes and <math xmlns="http://www.w3.org/1998/Math/MathML"><mover accent="true"><mrow><mi>z</mi></mrow><mo stretchy="false">ˆ</mo></mover></math> the normalised code of one
       sample; the mean of latent component <em>i</em> over the batch is
-      <math xmlns="http://www.w3.org/1998/Math/MathML"><msub><mi>μ</mi><mi>i</mi></msub></math>. The three scalar weights
-      <math xmlns="http://www.w3.org/1998/Math/MathML"><mi>α</mi></math>, <math xmlns="http://www.w3.org/1998/Math/MathML"><mi>β</mi></math> and
-      <math xmlns="http://www.w3.org/1998/Math/MathML"><mi>γ</mi></math> scale the orthogonality, centre-of-mass and
-      variance terms, and <math xmlns="http://www.w3.org/1998/Math/MathML"><mi>ε</mi></math> is the exponent of the
+      <math xmlns="http://www.w3.org/1998/Math/MathML"><msub><mi mathvariant="italic">μ</mi><mrow><mi>i</mi></mrow></msub></math>. The three scalar weights
+      <math xmlns="http://www.w3.org/1998/Math/MathML"><mi mathvariant="italic">α</mi></math>, <math xmlns="http://www.w3.org/1998/Math/MathML"><mi mathvariant="italic">β</mi></math> and
+      <math xmlns="http://www.w3.org/1998/Math/MathML"><mi mathvariant="italic">γ</mi></math> scale the orthogonality, centre-of-mass and
+      variance terms, and <math xmlns="http://www.w3.org/1998/Math/MathML"><mi mathvariant="italic">ε</mi></math> is the exponent of the
       centre-of-mass weight.
     </p>
 
@@ -304,46 +346,53 @@
          the MathML here. -->
     <!-- BEGIN EQUATIONS -->
         <figure class="equation">
+          <div class="math-display">
+            <math xmlns="http://www.w3.org/1998/Math/MathML" display="block"><msub><mi>L</mi><mrow><mtext mathvariant="normal">polca</mtext></mrow></msub><mspace width="0.278em"/><mo lspace="0.28em" rspace="0.28em">=</mo><mspace width="0.278em"/><msub><mi>L</mi><mrow><mtext mathvariant="normal">rec</mtext></mrow></msub><mspace width="0.278em"/><mo lspace="0.28em" rspace="0.28em">+</mo><mspace width="0.278em"/><msub><mi>L</mi><mrow><mtext mathvariant="normal">class</mtext></mrow></msub><mspace width="0.278em"/><mo lspace="0.28em" rspace="0.28em">+</mo><mspace width="0.278em"/><mi mathvariant="italic">α</mi><mspace width="0.167em"/><msub><mi>L</mi><mrow><mtext mathvariant="normal">ort</mtext></mrow></msub><mspace width="0.278em"/><mo lspace="0.28em" rspace="0.28em">+</mo><mspace width="0.278em"/><mi mathvariant="italic">β</mi><mspace width="0.167em"/><msub><mi>L</mi><mrow><mtext mathvariant="normal">com</mtext></mrow></msub><mspace width="0.278em"/><mo lspace="0.28em" rspace="0.28em">+</mo><mspace width="0.278em"/><mi mathvariant="italic">γ</mi><mspace width="0.167em"/><msub><mi>L</mi><mrow><mtext mathvariant="normal">var</mtext></mrow></msub></math>
+          </div>
+          <span class="equation-number">(1)</span>
           <figcaption>Composite objective</figcaption>
-          <div class="math-display">
-            <math xmlns="http://www.w3.org/1998/Math/MathML" display="block"><msub><mi>L</mi><mtext mathvariant="normal">polca</mtext></msub><mspace width="0.278em"/><mo>=</mo><mspace width="0.278em"/><msub><mi>L</mi><mtext mathvariant="normal">rec</mtext></msub><mspace width="0.278em"/><mo>+</mo><mspace width="0.278em"/><msub><mi>L</mi><mtext mathvariant="normal">class</mtext></msub><mspace width="0.278em"/><mo>+</mo><mspace width="0.278em"/><mi>α</mi><mspace width="0.167em"/><msub><mi>L</mi><mtext mathvariant="normal">ort</mtext></msub><mspace width="0.278em"/><mo>+</mo><mspace width="0.278em"/><mi>β</mi><mspace width="0.167em"/><msub><mi>L</mi><mtext mathvariant="normal">com</mtext></msub><mspace width="0.278em"/><mo>+</mo><mspace width="0.278em"/><mi>γ</mi><mspace width="0.167em"/><msub><mi>L</mi><mtext mathvariant="normal">var</mtext></msub></math>
-          </div>
         </figure>
         <figure class="equation">
+          <div class="math-display">
+            <math xmlns="http://www.w3.org/1998/Math/MathML" display="block"><msub><mi>L</mi><mrow><mtext mathvariant="normal">rec</mtext></mrow></msub><mspace width="0.278em"/><mo lspace="0.28em" rspace="0.28em">=</mo><mspace width="0.278em"/><mtext mathvariant="normal">mean</mtext><mrow><mo stretchy="true" fence="true">(</mo><mrow><msup><mrow><mo stretchy="true" fence="true">(</mo><mrow><mover accent="true"><mrow><mi>x</mi></mrow><mo stretchy="false">ˆ</mo></mover><mo lspace="0.28em" rspace="0.28em">-</mo><mi>x</mi></mrow><mo stretchy="true" fence="true">)</mo></mrow><mrow><mn>2</mn></mrow></msup></mrow><mo stretchy="true" fence="true">)</mo></mrow></math>
+          </div>
+          <span class="equation-number">(2)</span>
           <figcaption>Reconstruction term</figcaption>
-          <div class="math-display">
-            <math xmlns="http://www.w3.org/1998/Math/MathML" display="block"><msub><mi>L</mi><mtext mathvariant="normal">rec</mtext></msub><mspace width="0.278em"/><mo>=</mo><mspace width="0.278em"/><mtext mathvariant="normal">mean</mtext><mrow><mo stretchy="true">(</mo><mrow><msup><mrow><mo stretchy="true">(</mo><mrow><mover accent="true"><mi>x</mi><mo stretchy="false">ˆ</mo></mover><mo>-</mo><mi>x</mi></mrow><mo stretchy="true">)</mo></mrow><mn>2</mn></msup></mrow><mo stretchy="true">)</mo></mrow></math>
-          </div>
         </figure>
         <figure class="equation">
+          <div class="math-display">
+            <math xmlns="http://www.w3.org/1998/Math/MathML" display="block"><msub><mi>L</mi><mrow><mtext mathvariant="normal">ort</mtext></mrow></msub><mspace width="0.278em"/><mo lspace="0.28em" rspace="0.28em">=</mo><mspace width="0.278em"/><mfrac><mrow><mn>2</mn></mrow><mrow><mi>n</mi><mspace width="0.167em"/><mrow><mo stretchy="true" fence="true">(</mo><mrow><mi>n</mi><mo lspace="0.28em" rspace="0.28em">-</mo><mn>1</mn></mrow><mo stretchy="true" fence="true">)</mo></mrow></mrow></mfrac><munder><mo stretchy="true" largeop="true" movablelimits="false">∑</mo><mrow><mn>1</mn><mo lspace="0.28em" rspace="0.28em">≤</mo><mi>i</mi><mo lspace="0.28em" rspace="0.28em">&lt;</mo><mi>j</mi><mo lspace="0.28em" rspace="0.28em">≤</mo><mi>n</mi></mrow></munder><mrow><msup><msub><mi>S</mi><mrow><mi>i</mi><mi>j</mi></mrow></msub><mrow><mn>2</mn></mrow></msup></mrow><mspace width="0.278em"/><mo lspace="0em" rspace="0.167em">,</mo><mspace width="2em"/><mi>S</mi><mo lspace="0.28em" rspace="0.28em">=</mo><msup><mover accent="true"><mrow><mi>Z</mi></mrow><mo stretchy="false">ˆ</mo></mover><mrow><mi>T</mi></mrow></msup><mover accent="true"><mrow><mi>Z</mi></mrow><mo stretchy="false">ˆ</mo></mover></math>
+          </div>
+          <span class="equation-number">(3)</span>
           <figcaption>Orthogonality penalty</figcaption>
-          <div class="math-display">
-            <math xmlns="http://www.w3.org/1998/Math/MathML" display="block"><msub><mi>L</mi><mtext mathvariant="normal">ort</mtext></msub><mspace width="0.278em"/><mo>=</mo><mspace width="0.278em"/><mfrac><mn>2</mn><mi>n</mi><mspace width="0.167em"/><mrow><mo stretchy="true">(</mo><mrow><mi>n</mi><mo>-</mo><mn>1</mn></mrow><mo stretchy="true">)</mo></mrow></mfrac><munder><mo stretchy="true" movablelimits="false">∑</mo><mn>1</mn><mo>≤</mo><mi>i</mi><mo>&lt;</mo><mi>j</mi><mo>≤</mo><mi>n</mi></munder><mrow><msup><msub><mi>S</mi><mtext>ij</mtext></msub><mn>2</mn></msup></mrow><mspace width="0.278em"/><mo>,</mo><mspace width="2em"/><mi>S</mi><mo>=</mo><msup><mover accent="true"><mi>Z</mi><mo stretchy="false">ˆ</mo></mover><mi>T</mi></msup><mover accent="true"><mi>Z</mi><mo stretchy="false">ˆ</mo></mover></math>
-          </div>
         </figure>
         <figure class="equation">
+          <div class="math-display">
+            <math xmlns="http://www.w3.org/1998/Math/MathML" display="block"><msub><mi>L</mi><mrow><mtext mathvariant="normal">var</mtext></mrow></msub><mspace width="0.278em"/><mo lspace="0.28em" rspace="0.28em">=</mo><mspace width="0.278em"/><munderover><mo stretchy="true" largeop="true" movablelimits="false">∑</mo><mrow><mi>i</mi><mo lspace="0.28em" rspace="0.28em">=</mo><mn>0</mn></mrow><mrow><mi>n</mi><mo lspace="0.28em" rspace="0.28em">-</mo><mn>1</mn></mrow></munderover><mrow><mi>𝔼</mi><mrow><mo stretchy="true" fence="true">[</mo><mrow><msup><mrow><mo stretchy="true" fence="true">(</mo><mrow><msub><mi>z</mi><mrow><mi>i</mi></mrow></msub><mo lspace="0.28em" rspace="0.28em">-</mo><msub><mi mathvariant="italic">μ</mi><mrow><mi>i</mi></mrow></msub></mrow><mo stretchy="true" fence="true">)</mo></mrow><mrow><mn>2</mn></mrow></msup></mrow><mo stretchy="true" fence="true">]</mo></mrow></mrow></math>
+          </div>
+          <span class="equation-number">(4)</span>
           <figcaption>Variance regulariser</figcaption>
-          <div class="math-display">
-            <math xmlns="http://www.w3.org/1998/Math/MathML" display="block"><msub><mi>L</mi><mtext mathvariant="normal">var</mtext></msub><mspace width="0.278em"/><mo>=</mo><mspace width="0.278em"/><munderover><mo stretchy="true" movablelimits="false">∑</mo><mi>i</mi><mo>=</mo><mn>0</mn><mi>n</mi><mo>-</mo><mn>1</mn></munderover><mrow><mi>𝔼</mi><mrow><mo stretchy="true">[</mo><mrow><msup><mrow><mo stretchy="true">(</mo><mrow><msub><mi>z</mi><mi>i</mi></msub><mo>-</mo><msub><mi>μ</mi><mi>i</mi></msub></mrow><mo stretchy="true">)</mo></mrow><mn>2</mn></msup></mrow><mo stretchy="true">]</mo></mrow></mrow></math>
-          </div>
         </figure>
         <figure class="equation">
+          <div class="math-display">
+            <math xmlns="http://www.w3.org/1998/Math/MathML" display="block"><msub><mi>L</mi><mrow><mtext mathvariant="normal">com</mtext></mrow></msub><mspace width="0.278em"/><mo lspace="0.28em" rspace="0.28em">=</mo><mspace width="0.278em"/><mfrac><mrow><msubsup><mo>∑</mo><mrow><mi>i</mi><mo lspace="0.28em" rspace="0.28em">=</mo><mn>0</mn></mrow><mrow><mi>n</mi><mo lspace="0.28em" rspace="0.28em">-</mo><mn>1</mn></mrow></msubsup><mrow><msup><mi>i</mi><mrow><mn>1</mn><mo lspace="0.28em" rspace="0.28em">+</mo><mi mathvariant="italic">ε</mi></mrow></msup><mspace width="0.167em"/><mi>𝔼</mi><mrow><mo stretchy="true" fence="true">[</mo><mrow><msup><mrow><mo stretchy="true" fence="true">(</mo><mrow><msub><mi>z</mi><mrow><mi>i</mi></mrow></msub><mo lspace="0.28em" rspace="0.28em">-</mo><msub><mi mathvariant="italic">μ</mi><mrow><mi>i</mi></mrow></msub></mrow><mo stretchy="true" fence="true">)</mo></mrow><mrow><mn>2</mn></mrow></msup></mrow><mo stretchy="true" fence="true">]</mo></mrow></mrow></mrow><mrow><mi>n</mi><mspace width="0.167em"/><msub><mi>L</mi><mrow><mtext mathvariant="normal">var</mtext></mrow></msub></mrow></mfrac><mspace width="0.278em"/><mo lspace="0em" rspace="0.167em">,</mo><mspace width="2em"/><mi mathvariant="italic">ε</mi><mo lspace="0.28em" rspace="0.28em">=</mo><mn>0.25</mn></math>
+          </div>
+          <span class="equation-number">(5)</span>
           <figcaption>Centre-of-mass term (variance ordering)</figcaption>
-          <div class="math-display">
-            <math xmlns="http://www.w3.org/1998/Math/MathML" display="block"><msub><mi>L</mi><mtext mathvariant="normal">com</mtext></msub><mspace width="0.278em"/><mo>=</mo><mspace width="0.278em"/><mfrac><munderover><mo stretchy="true" movablelimits="false">∑</mo><mi>i</mi><mo>=</mo><mn>0</mn><mi>n</mi><mo>-</mo><mn>1</mn></munderover><mrow><msup><mi>i</mi><mn>1</mn><mo>+</mo><mi>ε</mi></msup><mspace width="0.167em"/><mi>𝔼</mi><mrow><mo stretchy="true">[</mo><mrow><msup><mrow><mo stretchy="true">(</mo><mrow><msub><mi>z</mi><mi>i</mi></msub><mo>-</mo><msub><mi>μ</mi><mi>i</mi></msub></mrow><mo stretchy="true">)</mo></mrow><mn>2</mn></msup></mrow><mo stretchy="true">]</mo></mrow></mrow><mi>n</mi><mspace width="0.167em"/><msub><mi>L</mi><mtext mathvariant="normal">var</mtext></msub></mfrac><mspace width="0.278em"/><mo>,</mo><mspace width="2em"/><mi>ε</mi><mo>=</mo><mn>0.25</mn></math>
-          </div>
         </figure>
         <figure class="equation">
+          <div class="math-display">
+            <math xmlns="http://www.w3.org/1998/Math/MathML" display="block"><msub><mi>L</mi><mrow><mtext mathvariant="normal">class</mtext></mrow></msub><mspace width="0.278em"/><mo lspace="0.28em" rspace="0.28em">=</mo><mspace width="0.278em"/><mtext mathvariant="normal">CrossEntropy</mtext><mrow><mo stretchy="true" fence="true">(</mo><mrow><mtext mathvariant="normal">logits</mtext><mrow><mo stretchy="true" fence="true">(</mo><mrow><mi>z</mi></mrow><mo stretchy="true" fence="true">)</mo></mrow><mo lspace="0em" rspace="0.167em">,</mo><mspace width="0.167em"/><mi>y</mi></mrow><mo stretchy="true" fence="true">)</mo></mrow></math>
+          </div>
+          <span class="equation-number">(6)</span>
           <figcaption>Optional supervised term</figcaption>
-          <div class="math-display">
-            <math xmlns="http://www.w3.org/1998/Math/MathML" display="block"><msub><mi>L</mi><mtext mathvariant="normal">class</mtext></msub><mspace width="0.278em"/><mo>=</mo><mspace width="0.278em"/><mtext mathvariant="normal">CrossEntropy</mtext><mrow><mo stretchy="true">(</mo><mrow><mtext mathvariant="normal">logits</mtext><mrow><mo stretchy="true">(</mo><mrow><mi>z</mi></mrow><mo stretchy="true">)</mo></mrow><mo>,</mo><mspace width="0.167em"/><mi>y</mi></mrow><mo stretchy="true">)</mo></mrow></math>
-          </div>
         </figure>
         <figure class="equation">
-          <figcaption>Hyper-parameters of the reported run</figcaption>
           <div class="math-display">
-            <math xmlns="http://www.w3.org/1998/Math/MathML" display="block"><mi>α</mi><mo>=</mo><msup><mn>10</mn><mo>-</mo><mn>2</mn></msup><mspace width="0.167em"/><mo>,</mo><mspace width="2em"/><mi>β</mi><mo>=</mo><msup><mn>10</mn><mo>-</mo><mn>2</mn></msup><mspace width="0.167em"/><mo>,</mo><mspace width="2em"/><mi>γ</mi><mo>=</mo><msup><mn>10</mn><mo>-</mo><mn>7</mn></msup><mspace width="0.167em"/><mo>,</mo><mspace width="2em"/><mi>ε</mi><mo>=</mo><mn>0.25</mn><mspace width="0.278em"/><mo>,</mo><mspace width="2em"/><mtext mathvariant="normal">batch</mtext><mo>=</mo><mn>64</mn><mspace width="0.167em"/><mo>,</mo><mspace width="2em"/><mtext mathvariant="normal">updates</mtext><mo>=</mo><mn>20</mn><mspace width="0.167em"/><mn>000</mn><mspace width="0.278em"/><mo>,</mo><mspace width="2em"/><mtext mathvariant="normal">seed</mtext><mo>=</mo><mn>5</mn></math>
+            <math xmlns="http://www.w3.org/1998/Math/MathML" display="block"><mi mathvariant="italic">α</mi><mo lspace="0.28em" rspace="0.28em">=</mo><msup><mn>10</mn><mrow><mo lspace="0em" rspace="0.05em">-</mo><mn>2</mn></mrow></msup><mspace width="0.167em"/><mo lspace="0em" rspace="0.167em">,</mo><mspace width="2em"/><mi mathvariant="italic">β</mi><mo lspace="0.28em" rspace="0.28em">=</mo><msup><mn>10</mn><mrow><mo lspace="0em" rspace="0.05em">-</mo><mn>2</mn></mrow></msup><mspace width="0.167em"/><mo lspace="0em" rspace="0.167em">,</mo><mspace width="2em"/><mi mathvariant="italic">γ</mi><mo lspace="0.28em" rspace="0.28em">=</mo><msup><mn>10</mn><mrow><mo lspace="0em" rspace="0.05em">-</mo><mn>7</mn></mrow></msup><mspace width="0.167em"/><mo lspace="0em" rspace="0.167em">,</mo><mspace width="2em"/><mi mathvariant="italic">ε</mi><mo lspace="0.28em" rspace="0.28em">=</mo><mn>0.25</mn><mspace width="0.278em"/><mo lspace="0em" rspace="0.167em">,</mo><mspace width="2em"/><mtext mathvariant="normal">batch</mtext><mo lspace="0.28em" rspace="0.28em">=</mo><mn>64</mn><mspace width="0.167em"/><mo lspace="0em" rspace="0.167em">,</mo><mspace width="2em"/><mtext mathvariant="normal">updates</mtext><mo lspace="0.28em" rspace="0.28em">=</mo><mn>20</mn><mspace width="0.167em"/><mn>000</mn><mspace width="0.278em"/><mo lspace="0em" rspace="0.167em">,</mo><mspace width="2em"/><mtext mathvariant="normal">seed</mtext><mo lspace="0.28em" rspace="0.28em">=</mo><mn>5</mn></math>
           </div>
+          <span class="equation-number">(7)</span>
+          <figcaption>Hyper-parameters of the reported run</figcaption>
         </figure>
       <!-- END EQUATIONS -->
 
@@ -354,29 +403,29 @@
       </thead>
       <tbody>
         <tr>
-          <td><math xmlns="http://www.w3.org/1998/Math/MathML"><msub><mi>L</mi><mtext mathvariant="normal">rec</mtext></msub></math></td>
+          <td><math xmlns="http://www.w3.org/1998/Math/MathML"><msub><mi>L</mi><mrow><mtext mathvariant="normal">rec</mtext></mrow></msub></math></td>
           <td>Mean squared error between the input and its reconstruction.</td>
           <td>Fidelity / the "least squares" side of PCA.</td>
         </tr>
         <tr>
-          <td><math xmlns="http://www.w3.org/1998/Math/MathML"><msub><mi>L</mi><mtext mathvariant="normal">class</mtext></msub></math></td>
+          <td><math xmlns="http://www.w3.org/1998/Math/MathML"><msub><mi>L</mi><mrow><mtext mathvariant="normal">class</mtext></mrow></msub></math></td>
           <td>Cross-entropy of a linear head on the latent code (supervised mode only).</td>
           <td>The discriminant, class-aligned directions of LDA.</td>
         </tr>
         <tr>
-          <td><math xmlns="http://www.w3.org/1998/Math/MathML"><msub><mi>L</mi><mtext mathvariant="normal">ort</mtext></msub></math></td>
+          <td><math xmlns="http://www.w3.org/1998/Math/MathML"><msub><mi>L</mi><mrow><mtext mathvariant="normal">ort</mtext></mrow></msub></math></td>
           <td>Squared off-diagonal energy of the Gram matrix of the L2-normalised latent codes.</td>
           <td>Orthogonality / decorrelation of the principal components.</td>
         </tr>
         <tr>
-          <td><math xmlns="http://www.w3.org/1998/Math/MathML"><msub><mi>L</mi><mtext mathvariant="normal">com</mtext></msub></math></td>
+          <td><math xmlns="http://www.w3.org/1998/Math/MathML"><msub><mi>L</mi><mrow><mtext mathvariant="normal">com</mtext></mrow></msub></math></td>
           <td>Variance-weighted index term; small when variance decreases along the latent index.</td>
           <td>Variance <em>ordering</em> of the components (the "principal" in principal component).</td>
         </tr>
         <tr>
-          <td><math xmlns="http://www.w3.org/1998/Math/MathML"><msub><mi>L</mi><mtext mathvariant="normal">var</mtext></msub></math></td>
+          <td><math xmlns="http://www.w3.org/1998/Math/MathML"><msub><mi>L</mi><mrow><mtext mathvariant="normal">var</mtext></mrow></msub></math></td>
           <td>Total per-component latent variance; normaliser and stabiliser.</td>
-          <td>Keeps the latent space well scaled; prevents <math xmlns="http://www.w3.org/1998/Math/MathML"><msub><mi>L</mi><mtext mathvariant="normal">com</mtext></msub></math> from degenerating.</td>
+          <td>Keeps the latent space well scaled; prevents <math xmlns="http://www.w3.org/1998/Math/MathML"><msub><mi>L</mi><mrow><mtext mathvariant="normal">com</mtext></mrow></msub></math> from degenerating.</td>
         </tr>
       </tbody>
     </table>
@@ -385,8 +434,8 @@
       <strong>Conventions we had to choose.</strong> The paper does not spell out two
       details. We use the <em>population</em> variance (divide by <em>N</em>) because the
       paper's <math xmlns="http://www.w3.org/1998/Math/MathML"><mi>𝔼</mi></math> denotes an expectation over the data distribution,
-      and we count each unordered off-diagonal pair of <math xmlns="http://www.w3.org/1998/Math/MathML"><msub><mi>S</mi><mtext>ij</mtext></msub></math> exactly once
-      (<math xmlns="http://www.w3.org/1998/Math/MathML"><munder><mo stretchy="true" movablelimits="false">∑</mo><mi>i</mi><mo>&lt;</mo><mi>j</mi></munder></math>). Both choices are documented in the source and stated in
+      and we count each unordered off-diagonal pair of <math xmlns="http://www.w3.org/1998/Math/MathML"><msub><mi>S</mi><mrow><mi>i</mi><mi>j</mi></mrow></msub></math> exactly once
+      (<math xmlns="http://www.w3.org/1998/Math/MathML"><munder><mo stretchy="true" largeop="true" movablelimits="false">∑</mo><mrow><mi>i</mi><mo lspace="0.28em" rspace="0.28em">&lt;</mo><mi>j</mi></mrow></munder></math>). Both choices are documented in the source and stated in
       the report.
     </div>
   </section>
@@ -646,16 +695,18 @@ _EPS: float = 1e-12
          report/render_site_math.py from report/equations.py. -->
     <!-- BEGIN METRIC EQUATIONS -->
         <figure class="equation">
-          <figcaption>Reconstruction error</figcaption>
           <div class="math-display">
-            <math xmlns="http://www.w3.org/1998/Math/MathML" display="block"><mtext mathvariant="normal">RMSE</mtext><mspace width="0.278em"/><mo>=</mo><mspace width="0.278em"/><msqrt><mfrac><mn>1</mn><mi>M</mi></mfrac><munderover><mo stretchy="true" movablelimits="false">∑</mo><mi>k</mi><mo>=</mo><mn>1</mn><mi>M</mi></munderover><msup><mrow><mo stretchy="true">(</mo><mrow><msub><mi>x</mi><mi>k</mi></msub><mo>-</mo><msub><mover accent="true"><mi>x</mi><mo stretchy="false">ˆ</mo></mover><mi>k</mi></msub></mrow><mo stretchy="true">)</mo></mrow><mn>2</mn></msup></msqrt><mspace width="0.278em"/><mo>,</mo><mspace width="2em"/><mtext mathvariant="normal">NRMSE</mtext><mspace width="0.278em"/><mo>=</mo><mspace width="0.278em"/><mfrac><mtext mathvariant="normal">RMSE</mtext><mtext mathvariant="normal">max</mtext><mrow><mo stretchy="true">(</mo><mrow><mi>x</mi></mrow><mo stretchy="true">)</mo></mrow><mo>-</mo><mtext mathvariant="normal">min</mtext><mrow><mo stretchy="true">(</mo><mrow><mi>x</mi></mrow><mo stretchy="true">)</mo></mrow></mfrac></math>
+            <math xmlns="http://www.w3.org/1998/Math/MathML" display="block"><mtext mathvariant="normal">RMSE</mtext><mspace width="0.278em"/><mo lspace="0.28em" rspace="0.28em">=</mo><mspace width="0.278em"/><msqrt><mrow><mfrac><mrow><mn>1</mn></mrow><mrow><mi>M</mi></mrow></mfrac><munderover><mo stretchy="true" largeop="true" movablelimits="false">∑</mo><mrow><mi>k</mi><mo lspace="0.28em" rspace="0.28em">=</mo><mn>1</mn></mrow><mrow><mi>M</mi></mrow></munderover><msup><mrow><mo stretchy="true" fence="true">(</mo><mrow><msub><mi>x</mi><mrow><mi>k</mi></mrow></msub><mo lspace="0.28em" rspace="0.28em">-</mo><msub><mover accent="true"><mrow><mi>x</mi></mrow><mo stretchy="false">ˆ</mo></mover><mrow><mi>k</mi></mrow></msub></mrow><mo stretchy="true" fence="true">)</mo></mrow><mrow><mn>2</mn></mrow></msup></mrow></msqrt><mspace width="0.278em"/><mo lspace="0em" rspace="0.167em">,</mo><mspace width="2em"/><mtext mathvariant="normal">NRMSE</mtext><mspace width="0.278em"/><mo lspace="0.28em" rspace="0.28em">=</mo><mspace width="0.278em"/><mfrac><mrow><mtext mathvariant="normal">RMSE</mtext></mrow><mrow><mtext mathvariant="normal">max</mtext><mrow><mo stretchy="true" fence="true">(</mo><mrow><mi>x</mi></mrow><mo stretchy="true" fence="true">)</mo></mrow><mo lspace="0.28em" rspace="0.28em">-</mo><mtext mathvariant="normal">min</mtext><mrow><mo stretchy="true" fence="true">(</mo><mrow><mi>x</mi></mrow><mo stretchy="true" fence="true">)</mo></mrow></mrow></mfrac></math>
           </div>
+          <span class="equation-number">(8)</span>
+          <figcaption>Reconstruction error</figcaption>
         </figure>
         <figure class="equation">
-          <figcaption>Peak signal-to-noise ratio</figcaption>
           <div class="math-display">
-            <math xmlns="http://www.w3.org/1998/Math/MathML" display="block"><mtext mathvariant="normal">PSNR</mtext><mspace width="0.278em"/><mo>=</mo><mspace width="0.278em"/><mn>10</mn><msub><mtext mathvariant="normal">log</mtext><mn>10</mn></msub><mrow><mo stretchy="true">(</mo><mrow><mfrac><msup><mi>R</mi><mn>2</mn></msup><mtext mathvariant="normal">MSE</mtext></mfrac></mrow><mo stretchy="true">)</mo></mrow><mspace width="0.278em"/><mo>,</mo><mspace width="2em"/><mi>R</mi><mo>=</mo><mn>1</mn><mtext mathvariant="normal"> for data in the unit interval</mtext></math>
+            <math xmlns="http://www.w3.org/1998/Math/MathML" display="block"><mtext mathvariant="normal">PSNR</mtext><mspace width="0.278em"/><mo lspace="0.28em" rspace="0.28em">=</mo><mspace width="0.278em"/><mn>10</mn><msub><mtext mathvariant="normal">log</mtext><mrow><mn>10</mn></mrow></msub><mrow><mo stretchy="true" fence="true">(</mo><mrow><mfrac><mrow><msup><mi>R</mi><mrow><mn>2</mn></mrow></msup></mrow><mrow><mtext mathvariant="normal">MSE</mtext></mrow></mfrac></mrow><mo stretchy="true" fence="true">)</mo></mrow><mspace width="0.278em"/><mo lspace="0em" rspace="0.167em">,</mo><mspace width="2em"/><mi>R</mi><mo lspace="0.28em" rspace="0.28em">=</mo><mn>1</mn><mtext mathvariant="normal"> for data in the unit interval</mtext></math>
           </div>
+          <span class="equation-number">(9)</span>
+          <figcaption>Peak signal-to-noise ratio</figcaption>
         </figure>
       <!-- END METRIC EQUATIONS -->
 
@@ -666,11 +717,11 @@ _EPS: float = 1e-12
       </thead>
       <tbody>
         <tr><td>Datasets</td><td><code>digits</code> (offline), <code>mnist</code>, <code>fashion_mnist</code></td></tr>
-        <tr><td>Methods</td><td>PCA (k = 8), LDA, Autoencoder, POLCA-Net (unsupervised), POLCA-Net + <math xmlns="http://www.w3.org/1998/Math/MathML"><msub><mi>L</mi><mtext mathvariant="normal">class</mtext></msub></math></td></tr>
+        <tr><td>Methods</td><td>PCA (k = 8), LDA, Autoencoder, POLCA-Net (unsupervised), POLCA-Net + <math xmlns="http://www.w3.org/1998/Math/MathML"><msub><mi>L</mi><mrow><mtext mathvariant="normal">class</mtext></mrow></msub></math></td></tr>
         <tr><td>Reconstruction metrics</td><td>NRMSE, PSNR, SSIM</td></tr>
         <tr><td>Classification metrics</td><td>Accuracy, F1 (macro) over Perceptron / Ridge / Logistic Regression / Linear SVM</td></tr>
         <tr><td>PCA-property diagnostics</td><td>Latent orthogonality error, variance-ordering score</td></tr>
-        <tr><td>Ablations</td><td>Remove <math xmlns="http://www.w3.org/1998/Math/MathML"><msub><mi>L</mi><mtext mathvariant="normal">ort</mtext></msub></math>, <math xmlns="http://www.w3.org/1998/Math/MathML"><msub><mi>L</mi><mtext mathvariant="normal">com</mtext></msub></math> or <math xmlns="http://www.w3.org/1998/Math/MathML"><msub><mi>L</mi><mtext mathvariant="normal">var</mtext></msub></math> individually</td></tr>
+        <tr><td>Ablations</td><td>Remove <math xmlns="http://www.w3.org/1998/Math/MathML"><msub><mi>L</mi><mrow><mtext mathvariant="normal">ort</mtext></mrow></msub></math>, <math xmlns="http://www.w3.org/1998/Math/MathML"><msub><mi>L</mi><mrow><mtext mathvariant="normal">com</mtext></mrow></msub></math> or <math xmlns="http://www.w3.org/1998/Math/MathML"><msub><mi>L</mi><mrow><mtext mathvariant="normal">var</mtext></mrow></msub></math> individually</td></tr>
       </tbody>
     </table>
 
@@ -808,7 +859,7 @@ _EPS: float = 1e-12
       <li><strong>Select</strong> &mdash; a nine-column comparison table; POLCA-Net wins because the paper itself frames it as an extension of PCA and LDA to non-linear domains and reports on a reproducible image benchmark.</li>
       <li><strong>Read the paper</strong> &mdash; the five loss equations, the hyper-parameters and the evaluation protocol were extracted verbatim; two genuinely ambiguous conventions were flagged rather than guessed.</li>
       <li><strong>Implement</strong> &mdash; one prompt per module, each restating the exact formulas so the agent could not substitute a plausible-looking approximation.</li>
-      <li><strong>Verify and correct</strong> &mdash; shape assertions, an analytic orthogonality check (an exactly orthogonal latent set must give <math xmlns="http://www.w3.org/1998/Math/MathML"><msub><mi>L</mi><mtext mathvariant="normal">ort</mtext></msub></math> &asymp; 0), a variance-ordering check, a degenerate-batch check, a gradient-coverage check and a determinism check. Seven real bug classes were caught this way, including a double-counted symmetric off-diagonal sum in <math xmlns="http://www.w3.org/1998/Math/MathML"><msub><mi>L</mi><mtext mathvariant="normal">ort</mtext></msub></math>, an L2 normalisation applied to the wrong axis, and a <code>channel_axis</code> argument that made the SSIM metric silently compute the similarity of an image's <em>rows</em> instead of the image.</li>
+      <li><strong>Verify and correct</strong> &mdash; shape assertions, an analytic orthogonality check (an exactly orthogonal latent set must give <math xmlns="http://www.w3.org/1998/Math/MathML"><msub><mi>L</mi><mrow><mtext mathvariant="normal">ort</mtext></mrow></msub></math> &asymp; 0), a variance-ordering check, a degenerate-batch check, a gradient-coverage check and a determinism check. Seven real bug classes were caught this way, including a double-counted symmetric off-diagonal sum in <math xmlns="http://www.w3.org/1998/Math/MathML"><msub><mi>L</mi><mrow><mtext mathvariant="normal">ort</mtext></mrow></msub></math>, an L2 normalisation applied to the wrong axis, and a <code>channel_axis</code> argument that made the SSIM metric silently compute the similarity of an image's <em>rows</em> instead of the image.</li>
       <li><strong>Run and validate</strong> &mdash; three seeds; comparisons whose spread exceeds the gap are flagged as inconclusive instead of being reported as wins.</li>
       <li><strong>Write the report</strong> &mdash; generated from the metrics files, with a guard that forbids inserting any number that is not in <code>results/</code>.</li>
     </ol>
